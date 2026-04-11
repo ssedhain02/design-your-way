@@ -3,18 +3,28 @@ import { useDesignerStore } from '@/store/designerStore';
 import { cn } from '@/lib/utils';
 
 export default function TopToolbar() {
-  const { mode, setMode } = useDesignerStore();
+  const { mode, setMode, undo, redo, canUndo, canRedo } = useDesignerStore();
 
   return (
     <div className="flex items-center justify-between h-12 px-4 border-b border-border bg-background">
-      <div className="flex items-center gap-2">
-        <button className="p-2 rounded-lg hover:bg-accent text-muted-foreground">
+      <div className="flex items-center gap-1">
+        <button className="p-2 rounded-lg hover:bg-accent text-muted-foreground" title="Info">
           <Info className="w-4 h-4" />
         </button>
-        <button className="p-2 rounded-lg hover:bg-accent text-muted-foreground">
+        <button
+          onClick={undo}
+          disabled={!canUndo()}
+          className={cn('p-2 rounded-lg hover:bg-accent text-muted-foreground', !canUndo() && 'opacity-30 cursor-not-allowed')}
+          title="Undo (Ctrl+Z)"
+        >
           <Undo2 className="w-4 h-4" />
         </button>
-        <button className="p-2 rounded-lg hover:bg-accent text-muted-foreground">
+        <button
+          onClick={redo}
+          disabled={!canRedo()}
+          className={cn('p-2 rounded-lg hover:bg-accent text-muted-foreground', !canRedo() && 'opacity-30 cursor-not-allowed')}
+          title="Redo (Ctrl+Shift+Z)"
+        >
           <Redo2 className="w-4 h-4" />
         </button>
       </div>
@@ -42,7 +52,7 @@ export default function TopToolbar() {
         >
           Preview
         </button>
-        <button className="ml-3 p-2 rounded-lg hover:bg-accent text-muted-foreground">
+        <button className="ml-3 p-2 rounded-lg hover:bg-accent text-muted-foreground" title="Product options">
           <Scissors className="w-5 h-5" />
         </button>
       </div>
