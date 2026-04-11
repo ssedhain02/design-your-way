@@ -14,16 +14,250 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      order_items: {
+        Row: {
+          created_at: string
+          design_snapshot: Json | null
+          id: string
+          order_id: string
+          product_id: string | null
+          quantity: number
+          size: string | null
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          design_snapshot?: Json | null
+          id?: string
+          order_id: string
+          product_id?: string | null
+          quantity?: number
+          size?: string | null
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          design_snapshot?: Json | null
+          id?: string
+          order_id?: string
+          product_id?: string | null
+          quantity?: number
+          size?: string | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          shipping_address: string | null
+          status: Database["public"]["Enums"]["order_status"]
+          total_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          shipping_address?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          total_amount?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          shipping_address?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          total_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          created_at: string
+          description: string | null
+          design_data: Json
+          garment_color: string
+          garment_type: string
+          id: string
+          image_url: string | null
+          is_published: boolean
+          price: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          design_data?: Json
+          garment_color?: string
+          garment_type?: string
+          id?: string
+          image_url?: string | null
+          is_published?: boolean
+          price?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          design_data?: Json
+          garment_color?: string
+          garment_type?: string
+          id?: string
+          image_url?: string | null
+          is_published?: boolean
+          price?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vendor_assignments: {
+        Row: {
+          assigned_at: string
+          completed_at: string | null
+          id: string
+          notes: string | null
+          order_id: string
+          status: Database["public"]["Enums"]["assignment_status"]
+          updated_at: string
+          vendor_id: string | null
+          vendor_type: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          assigned_at?: string
+          completed_at?: string | null
+          id?: string
+          notes?: string | null
+          order_id: string
+          status?: Database["public"]["Enums"]["assignment_status"]
+          updated_at?: string
+          vendor_id?: string | null
+          vendor_type: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          assigned_at?: string
+          completed_at?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string
+          status?: Database["public"]["Enums"]["assignment_status"]
+          updated_at?: string
+          vendor_id?: string | null
+          vendor_type?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_assignments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "customer" | "vendor_printer" | "vendor_delivery" | "admin"
+      assignment_status: "pending" | "accepted" | "in_progress" | "completed"
+      order_status:
+        | "pending"
+        | "printing"
+        | "ready_for_pickup"
+        | "in_delivery"
+        | "delivered"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +384,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["customer", "vendor_printer", "vendor_delivery", "admin"],
+      assignment_status: ["pending", "accepted", "in_progress", "completed"],
+      order_status: [
+        "pending",
+        "printing",
+        "ready_for_pickup",
+        "in_delivery",
+        "delivered",
+        "cancelled",
+      ],
+    },
   },
 } as const
