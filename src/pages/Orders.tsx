@@ -4,7 +4,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Check } from 'lucide-react';
+
+const STATUS_STEPS = ['pending', 'printing', 'ready_for_pickup', 'in_delivery', 'delivered'];
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  printing: 'Printing',
+  ready_for_pickup: 'Ready',
+  in_delivery: 'In Delivery',
+  delivered: 'Delivered',
+};
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
@@ -23,7 +32,7 @@ export default function Orders() {
   useEffect(() => {
     if (!user) return;
     const fetchOrders = async () => {
-      const { data } = await supabase.from('orders').select('*, order_items(*)').eq('user_id', user.id).order('created_at', { ascending: false });
+      const { data } = await supabase.from('orders').select('*, order_items(*, products(*))').eq('user_id', user.id).order('created_at', { ascending: false });
       setOrders(data || []);
       setLoading(false);
     };
@@ -53,24 +62,58 @@ export default function Orders() {
           </div>
         ) : (
           <div className="space-y-4">
-            {orders.map(order => (
-              <div key={order.id} className="border border-border rounded-lg p-4 bg-card">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <span className="font-mono text-sm text-muted-foreground">#{order.id.slice(0, 8)}</span>
-                    <span className="ml-3 text-sm text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</span>
+            {orders.map(order => {
+              const currentStep = STATUS_STEPS.indexOf(order.status);
+              return (
+                <div key={order.id} className="border border-border rounded-lg p-4 bg-card">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <span className="font-mono text-sm text-muted-foreground">#{order.id.slice(0, 8)}</span>
+                      <span className="ml-3 text-sm text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className={statusColors[order.status] || ''}>
+                        {order.status.replace(/_/g, ' ')}
+                      </Badge>
+                      <span className="font-bold">${Number(order.total_amount).toFixed(2)}</span>
+                    </div>
                   </div>
-                  <Badge variant="outline" className={statusColors[order.status] || ''}>
-                    {order.status.replace(/_/g, ' ')}
-                  </Badge>
+
+                  {/* Status timeline */}
+                  {order.status !== 'cancelled' && (
+                    <div className="flex items-center gap-1 mb-4">
+                      {STATUS_STEPS.map((step, i) => {
+                        const done = i <= currentStep;
+                        const active = i === currentStep;
+                        return (
+                          <div key={step} className="flex items-center flex-1">
+                            <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs flex-shrink-0 ${
+                              done ? 'bg-primary text-primary-foreground' : 'border border-border text-muted-foreground'
+                            } ${active ? 'ring-2 ring-primary/30' : ''}`}>
+                              {done ? <Check className="w-3 h-3" /> : i + 1}
+                            </div>
+                            {i < STATUS_STEPS.length - 1 && (
+                              <div className={`h-0.5 flex-1 mx-1 ${i < currentStep ? 'bg-primary' : 'bg-border'}`} />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="flex justify-between text-xs text-muted-foreground mb-3">
+                    {STATUS_STEPS.map(s => <span key={s} className="flex-1 text-center">{STATUS_LABELS[s]}</span>)}
+                  </div>
+
+                  {/* Items */}
+                  <div className="text-sm text-muted-foreground">
+                    {(order.order_items || []).map((item: any, i: number) => (
+                      <span key={i}>{item.products?.title || 'Item'} ({item.size}) ×{item.quantity}{i < order.order_items.length - 1 ? ' • ' : ''}</span>
+                    ))}
+                  </div>
+                  {order.shipping_address && <p className="text-sm text-muted-foreground mt-2">📍 {order.shipping_address}</p>}
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">{order.order_items?.length || 0} item(s)</span>
-                  <span className="font-bold">${Number(order.total_amount).toFixed(2)}</span>
-                </div>
-                {order.shipping_address && <p className="text-sm text-muted-foreground mt-2">📍 {order.shipping_address}</p>}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
