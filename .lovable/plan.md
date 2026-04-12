@@ -1,85 +1,68 @@
 
 
-## Plan: Full-Stack Marketplace with Vendor System
+## Plan: Wire Up the Full Marketplace Flow
 
-This plan adds a Supabase-powered backend to turn the designer tool into a marketplace with automated order routing to two vendor types.
+The backend schema and pages exist but are mostly disconnected. This plan wires everything together: designer saves to DB, marketplace displays real products, cart/checkout auto-routes orders, and vendor dashboards handle the workflow.
 
-### Architecture
+### What will be built
 
-```text
-Customer (Marketplace)          Vendor 1 (Printer)         Vendor 2 (Delivery)
-  ┌─────────────────┐          ┌──────────────┐           ┌──────────────┐
-  │ Designer Tool    │          │ Dashboard    │           │ Dashboard    │
-  │ Product Catalog  │──order──▶│ View orders  │──done────▶│ Pickup jobs  │
-  │ Cart & Checkout  │          │ Mark printed │           │ Mark delivered│
-  └─────────────────┘          └──────────────┘           └──────────────┘
-         │                            │                          │
-         └────────────────────────────┴──────────────────────────┘
-                              Supabase Backend
-                         (Auth, DB, Edge Functions)
-```
+**1. Designer "Save & Publish" flow**
+- Add a save dialog to the designer (triggered by the "Save product" button) with fields: title, description, price
+- On save, capture the current design elements as JSON + garment color/type, generate a canvas-based preview image, upload preview to a Supabase storage bucket, and insert a row into `products` with `is_published = true`
+- Requires creating a `product-images` storage bucket with public read access
+- User must be logged in to save; redirect to `/login` if not
 
-### Database Tables (via Supabase migrations)
+**2. Marketplace product cards with real previews**
+- Update `ProductCard` to show the uploaded preview image instead of the emoji placeholder
+- Add size selector (S/M/L/XL/XXL) before adding to cart
+- Show garment type badge on cards
 
-1. **profiles** - user info (name, avatar, phone)
-2. **user_roles** - role enum: `customer`, `vendor_printer`, `vendor_delivery`, `admin`
-3. **products** - saved designs (design JSON, garment type, colors, pricing)
-4. **orders** - customer orders with status workflow: `pending` → `printing` → `ready_for_pickup` → `in_delivery` → `delivered`
-5. **order_items** - line items linking orders to products with quantity/size
-6. **vendor_assignments** - maps orders to vendor 1 (printer) and vendor 2 (delivery) with acceptance status
+**3. Cart checkout auto-routing**
+- After placing an order in `Cart.tsx`, automatically invoke the `route-order` edge function to assign to a printer vendor
+- Update the edge function to be callable by the order owner (not just admins) for the `assign_printer` action on their own order, OR use a database trigger instead
+- Simpler approach: use a DB trigger on `orders` INSERT to auto-assign to a printer vendor, removing the need for the edge function call from the client
 
-### Auth & Roles
+**4. Printer Dashboard enhancements**
+- Show design preview image in the order card
+- Show order items detail (sizes, quantities)
+- When printer marks "Ready for Pickup", auto-trigger delivery assignment (via edge function call or DB trigger)
 
-- Email/password auth via Lovable Cloud
-- Role-based access using `user_roles` table with `has_role()` security definer function
-- Separate login redirects based on role (customer → marketplace, vendor → dashboard, admin → ERP)
-- RLS on all tables
+**5. Delivery Dashboard enhancements**
+- Auto-assignment when printer marks order as ready (extend the edge function or add a DB trigger on `orders` UPDATE where status changes to `ready_for_pickup`)
+- Show shipping address prominently, design preview
 
-### Pages to Build
+**6. Admin ERP improvements**
+- Add role assignment UI (dropdown to add/remove roles for users)
+- Show product management tab
+- Revenue chart placeholder
 
-| Route | Purpose |
-|-------|---------|
-| `/` | Landing/marketplace (product catalog) |
-| `/designer` | Current designer tool (move from `/`) |
-| `/login` | Auth page (login/signup) |
-| `/cart` | Shopping cart & checkout |
-| `/orders` | Customer order history |
-| `/vendor/printer` | Vendor 1 dashboard - incoming print orders, mark as done |
-| `/vendor/delivery` | Vendor 2 dashboard - pickup/delivery jobs, mark as delivered |
-| `/admin` | Admin ERP panel - all orders, vendors, analytics |
+### Database changes
 
-### Order Flow (automated via edge functions)
+- Create storage bucket `product-images` with public read policy
+- Create a DB trigger: on `orders` INSERT, auto-insert a `vendor_assignments` row for `vendor_printer` (picks first available printer)
+- Create a DB trigger: on `orders` UPDATE to `ready_for_pickup`, auto-insert `vendor_assignments` row for `vendor_delivery`
+- Enable realtime on `orders` and `vendor_assignments` tables
 
-1. Customer designs product → saves → adds to cart → places order
-2. Edge function auto-assigns order to available Vendor 1 (printer)
-3. Vendor 1 sees order in dashboard, prints, marks "ready for pickup"
-4. Status change triggers assignment to Vendor 2 (delivery)
-5. Vendor 2 picks up, delivers, marks "delivered"
-6. Customer sees real-time status updates
+### Files to create/modify
 
-### Key Components
+| File | Change |
+|------|--------|
+| `src/pages/Index.tsx` | Add save dialog with title/description/price, canvas preview generation, storage upload, product insert |
+| `src/pages/Marketplace.tsx` | Real image previews, size selector on product cards |
+| `src/pages/Cart.tsx` | Size display fix, no manual routing needed (DB trigger handles it) |
+| `src/pages/Orders.tsx` | Add order status timeline visualization |
+| `src/pages/vendor/PrinterDashboard.tsx` | Design preview images, auto-trigger delivery on "ready" |
+| `src/pages/vendor/DeliveryDashboard.tsx` | Design preview, shipping address emphasis |
+| `src/pages/Admin.tsx` | Role assignment dropdown, products tab |
+| `src/components/designer/SaveProductDialog.tsx` | New: modal for saving designs as products |
+| Migration SQL | Storage bucket, DB triggers for auto-routing |
 
-- **Vendor Dashboard**: Order list with status filters, order detail with design preview, action buttons
-- **Admin ERP Panel**: Overview stats, vendor management, order tracking table
-- **Product Catalog**: Grid of saved designs with pricing, add-to-cart
-- **Cart/Checkout**: Simple order form (no payment for now)
+### Implementation order
 
-### Implementation Order
-
-1. Set up Supabase tables, RLS, and roles
-2. Build auth pages with role-based routing
-3. Move designer to `/designer`, build marketplace landing at `/`
-4. Build product save/catalog system
-5. Build cart and checkout flow
-6. Build Vendor 1 (printer) dashboard
-7. Build Vendor 2 (delivery) dashboard
-8. Build admin ERP panel
-9. Create edge function for order routing automation
-
-### Technical Notes
-
-- All design data stored as JSON in the products table
-- Garment mockup images generated client-side for catalog display
-- Real-time order updates using Supabase subscriptions
-- No payment integration for now (order placement only)
+1. Storage bucket + migration for auto-routing triggers
+2. SaveProductDialog component + wire into designer
+3. Marketplace with real images and size selector
+4. Auto-routing on order placement (via DB triggers)
+5. Enhance vendor dashboards with previews and auto-assignment
+6. Admin role management UI
 
