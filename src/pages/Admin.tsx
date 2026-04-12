@@ -4,32 +4,60 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
-import { LogOut, Shield, Users, Package, Truck, Search } from 'lucide-react';
+import { LogOut, Shield, Package, Truck, Search, Plus, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+
+type AppRole = 'customer' | 'vendor_printer' | 'vendor_delivery' | 'admin';
+const ALL_ROLES: AppRole[] = ['customer', 'vendor_printer', 'vendor_delivery', 'admin'];
 
 export default function Admin() {
   const { signOut } = useAuth();
+  const { toast } = useToast();
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchAll = async () => {
-      const [ordersRes, usersRes, assignRes] = await Promise.all([
-        supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false }),
-        supabase.from('profiles').select('*, user_roles(role)'),
-        supabase.from('vendor_assignments').select('*, orders(*)').order('assigned_at', { ascending: false }),
-      ]);
-      setOrders(ordersRes.data || []);
-      setUsers(usersRes.data || []);
-      setAssignments(assignRes.data || []);
-      setLoading(false);
-    };
-    fetchAll();
-  }, []);
+  const fetchAll = async () => {
+    const [ordersRes, usersRes, assignRes, productsRes] = await Promise.all([
+      supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('*, user_roles(role)'),
+      supabase.from('vendor_assignments').select('*, orders(*)').order('assigned_at', { ascending: false }),
+      supabase.from('products').select('*').order('created_at', { ascending: false }),
+    ]);
+    setOrders(ordersRes.data || []);
+    setUsers(usersRes.data || []);
+    setAssignments(assignRes.data || []);
+    setProducts(productsRes.data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchAll(); }, []);
+
+  const addRole = async (userId: string, role: AppRole) => {
+    const { error } = await supabase.from('user_roles').insert({ user_id: userId, role });
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Role added' });
+      fetchAll();
+    }
+  };
+
+  const removeRole = async (userId: string, role: AppRole) => {
+    const { error } = await supabase.from('user_roles').delete().eq('user_id', userId).eq('role', role);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Role removed' });
+      fetchAll();
+    }
+  };
 
   const stats = {
     totalOrders: orders.length,
@@ -37,27 +65,6 @@ export default function Admin() {
     printing: orders.filter(o => o.status === 'printing').length,
     delivered: orders.filter(o => o.status === 'delivered').length,
     revenue: orders.reduce((s, o) => s + Number(o.total_amount), 0),
-  };
-
-  const assignToPrinter = async (orderId: string) => {
-    const printers = users.filter(u => u.user_roles?.some((r: any) => r.role === 'vendor_printer'));
-    if (printers.length === 0) return alert('No printer vendors registered');
-    const printer = printers[0]; // Simple round-robin - first available
-    await supabase.from('vendor_assignments').insert({
-      order_id: orderId, vendor_id: printer.user_id, vendor_type: 'vendor_printer',
-    });
-    await supabase.from('orders').update({ status: 'pending' }).eq('id', orderId);
-    window.location.reload();
-  };
-
-  const assignToDelivery = async (orderId: string) => {
-    const drivers = users.filter(u => u.user_roles?.some((r: any) => r.role === 'vendor_delivery'));
-    if (drivers.length === 0) return alert('No delivery vendors registered');
-    const driver = drivers[0];
-    await supabase.from('vendor_assignments').insert({
-      order_id: orderId, vendor_id: driver.user_id, vendor_type: 'vendor_delivery',
-    });
-    window.location.reload();
   };
 
   return (
@@ -76,7 +83,6 @@ export default function Admin() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <StatCard icon={<Package className="w-5 h-5" />} label="Total Orders" value={stats.totalOrders} />
           <StatCard icon={<Package className="w-5 h-5 text-yellow-500" />} label="Pending" value={stats.pending} />
@@ -88,7 +94,8 @@ export default function Admin() {
         <Tabs defaultValue="orders">
           <TabsList>
             <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="users">Users & Vendors</TabsTrigger>
+            <TabsTrigger value="users">Users & Roles</TabsTrigger>
+            <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="assignments">Assignments</TabsTrigger>
           </TabsList>
 
@@ -103,38 +110,68 @@ export default function Admin() {
                   </div>
                   <span className="font-bold">${Number(o.total_amount).toFixed(2)}</span>
                 </div>
-                <p className="text-sm text-muted-foreground mb-2">{o.order_items?.length || 0} items • {new Date(o.created_at).toLocaleString()}</p>
-                <div className="flex gap-2">
-                  {o.status === 'pending' && !assignments.some(a => a.order_id === o.id && a.vendor_type === 'vendor_printer') && (
-                    <Button size="sm" variant="outline" onClick={() => assignToPrinter(o.id)}>Assign to Printer</Button>
-                  )}
-                  {o.status === 'ready_for_pickup' && !assignments.some(a => a.order_id === o.id && a.vendor_type === 'vendor_delivery') && (
-                    <Button size="sm" variant="outline" onClick={() => assignToDelivery(o.id)}>Assign to Delivery</Button>
-                  )}
+                <p className="text-sm text-muted-foreground">{o.order_items?.length || 0} items • {new Date(o.created_at).toLocaleString()}</p>
+              </div>
+            ))}
+          </TabsContent>
+
+          <TabsContent value="users" className="mt-4 space-y-3">
+            {users.map(u => {
+              const currentRoles: string[] = (u.user_roles || []).map((r: any) => r.role);
+              const availableRoles = ALL_ROLES.filter(r => !currentRoles.includes(r));
+              return (
+                <div key={u.id} className="border border-border rounded-lg p-4 bg-card">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="font-medium">{u.full_name || 'Unnamed'}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{u.user_id?.slice(0, 12)}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {currentRoles.map((role: string) => (
+                      <Badge key={role} variant="secondary" className="flex items-center gap-1">
+                        {role.replace('vendor_', '')}
+                        <button onClick={() => removeRole(u.user_id, role as AppRole)} className="ml-1 hover:text-destructive">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                    {availableRoles.length > 0 && (
+                      <Select onValueChange={(val) => addRole(u.user_id, val as AppRole)}>
+                        <SelectTrigger className="w-auto h-7 text-xs gap-1">
+                          <Plus className="w-3 h-3" />
+                          <SelectValue placeholder="Add role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableRoles.map(r => (
+                            <SelectItem key={r} value={r}>{r.replace('vendor_', '')}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </TabsContent>
+
+          <TabsContent value="products" className="mt-4 space-y-3">
+            {products.map(p => (
+              <div key={p.id} className="border border-border rounded-lg p-4 bg-card flex items-center gap-4">
+                <div className="w-12 h-12 rounded overflow-hidden border border-border flex-shrink-0" style={{ backgroundColor: p.garment_color }}>
+                  {p.image_url ? <img src={p.image_url} alt="" className="w-full h-full object-contain" /> : <span className="flex items-center justify-center h-full text-lg">👕</span>}
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">{p.title}</p>
+                  <p className="text-sm text-muted-foreground">${Number(p.price).toFixed(2)} • {p.is_published ? 'Published' : 'Draft'}</p>
                 </div>
               </div>
             ))}
           </TabsContent>
 
-          <TabsContent value="users" className="mt-4">
-            {users.map(u => (
-              <div key={u.id} className="border border-border rounded-lg p-4 bg-card mb-3 flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{u.full_name || 'Unnamed'}</p>
-                  <p className="text-sm text-muted-foreground">{u.user_id?.slice(0, 8)}</p>
-                </div>
-                <div className="flex gap-1">
-                  {u.user_roles?.map((r: any, i: number) => (
-                    <Badge key={i} variant="secondary">{r.role}</Badge>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </TabsContent>
-
-          <TabsContent value="assignments" className="mt-4">
+          <TabsContent value="assignments" className="mt-4 space-y-3">
             {assignments.map(a => (
-              <div key={a.id} className="border border-border rounded-lg p-4 bg-card mb-3">
+              <div key={a.id} className="border border-border rounded-lg p-4 bg-card">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-sm">Order #{a.orders?.id?.slice(0, 8)}</span>
                   <div className="flex gap-2">

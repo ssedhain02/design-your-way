@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, LogOut, User, Package, Palette } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ShoppingCart, LogOut, Package, Palette } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 
 interface Product {
@@ -15,6 +16,8 @@ interface Product {
   garment_color: string;
   image_url: string | null;
 }
+
+const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
 export default function Marketplace() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -29,7 +32,6 @@ export default function Marketplace() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="text-xl font-bold">Custom Wear Studio</Link>
@@ -62,7 +64,6 @@ export default function Marketplace() {
         </div>
       </header>
 
-      {/* Hero */}
       <section className="py-16 px-4 text-center bg-accent/30">
         <h1 className="text-4xl font-bold mb-4">Design Your Own Custom Apparel</h1>
         <p className="text-muted-foreground text-lg mb-6 max-w-2xl mx-auto">
@@ -73,7 +74,6 @@ export default function Marketplace() {
         </Link>
       </section>
 
-      {/* Products */}
       <section className="max-w-7xl mx-auto px-4 py-12">
         <h2 className="text-2xl font-semibold mb-6">Published Designs</h2>
         {loading ? (
@@ -98,20 +98,45 @@ export default function Marketplace() {
 function ProductCard({ product }: { product: Product }) {
   const addItem = useCartStore(s => s.addItem);
   const { user } = useAuth();
+  const [selectedSize, setSelectedSize] = useState('M');
 
   return (
     <div className="border border-border rounded-lg overflow-hidden bg-card hover:shadow-md transition-shadow">
-      <div className="aspect-square flex items-center justify-center" style={{ backgroundColor: product.garment_color }}>
-        <span className="text-4xl">👕</span>
+      <div className="aspect-square flex items-center justify-center overflow-hidden" style={{ backgroundColor: product.garment_color }}>
+        {product.image_url ? (
+          <img src={product.image_url} alt={product.title} className="w-full h-full object-contain" />
+        ) : (
+          <span className="text-4xl">👕</span>
+        )}
       </div>
       <div className="p-4 space-y-2">
-        <h3 className="font-semibold truncate">{product.title}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold truncate flex-1">{product.title}</h3>
+          <Badge variant="secondary" className="text-xs">{product.garment_type}</Badge>
+        </div>
         {product.description && <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>}
+        
+        <div className="flex gap-1">
+          {SIZES.map(s => (
+            <button
+              key={s}
+              className={`px-2 py-0.5 text-xs rounded border transition-colors ${
+                selectedSize === s
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'border-border text-muted-foreground hover:border-foreground'
+              }`}
+              onClick={() => setSelectedSize(s)}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+
         <div className="flex items-center justify-between">
           <span className="font-bold text-lg">${Number(product.price).toFixed(2)}</span>
           <Button size="sm" onClick={() => {
             if (!user) { window.location.href = '/login'; return; }
-            addItem({ productId: product.id, title: product.title, price: Number(product.price), quantity: 1, size: 'M', garmentColor: product.garment_color });
+            addItem({ productId: product.id, title: product.title, price: Number(product.price), quantity: 1, size: selectedSize, garmentColor: product.garment_color });
           }}>
             <ShoppingCart className="w-4 h-4 mr-1" />Add
           </Button>
