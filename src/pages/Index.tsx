@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ToolSidebar from '@/components/designer/ToolSidebar';
 import ToolPanel from '@/components/designer/ToolPanel';
@@ -28,14 +27,7 @@ export default function Index() {
       <TopToolbar />
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex">
-          <div className="flex flex-col items-center w-10 border-r border-border pt-4">
-            <button className="p-2 rounded-lg hover:bg-accent text-muted-foreground" onClick={() => navigate('/')}>
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-          </div>
-          <ToolSidebar />
-        </div>
+        <ToolSidebar />
 
         <ToolPanel />
 

@@ -81,15 +81,22 @@ export default function DesignCanvas() {
       if (dragging) {
         const dx = (e.clientX - dragging.startX) / scale;
         const dy = (e.clientY - dragging.startY) / scale;
-        const newX = dragging.origX + dx;
-        const newY = dragging.origY + dy;
+        let newX = dragging.origX + dx;
+        let newY = dragging.origY + dy;
 
-        // Snap to center guides
         const el = elements.find((el) => el.id === dragging.id);
         if (el) {
-          const areaW = 200; const areaH = 290;
-          const centerX = (areaW - el.width) / 2;
-          const centerY = (areaH - el.height) / 2;
+          // Calculate design area pixel dimensions
+          const containerW = 500 * (bounds.w / 100);
+          const containerH = 580 * (bounds.h / 100);
+
+          // Clamp within bounds
+          newX = Math.max(0, Math.min(newX, containerW - el.width));
+          newY = Math.max(0, Math.min(newY, containerH - el.height));
+
+          // Snap to center guides
+          const centerX = (containerW - el.width) / 2;
+          const centerY = (containerH - el.height) / 2;
           const snapThreshold = 5;
           const snappedX = Math.abs(newX - centerX) < snapThreshold ? centerX : newX;
           const snappedY = Math.abs(newY - centerY) < snapThreshold ? centerY : newY;
@@ -114,19 +121,26 @@ export default function DesignCanvas() {
         if (handle.includes('s')) h = Math.max(20, h + dy);
         if (handle.includes('n')) { h = Math.max(20, h - dy); y = resizing.origY + dy; if (h <= 20) y = resizing.origY + resizing.origH - 20; }
 
-        // Simplified resize
+        // Simplified resize with clamping
+        const containerW = 500 * (bounds.w / 100);
+        const containerH = 580 * (bounds.h / 100);
         const updates: Record<string, number> = {};
-        if (handle.includes('e')) { updates.width = Math.max(20, resizing.origW + dx); }
+
+        if (handle.includes('e')) { updates.width = Math.max(20, Math.min(resizing.origW + dx, containerW - resizing.origX)); }
         if (handle.includes('w')) {
           const newW = Math.max(20, resizing.origW - dx);
+          const newX = resizing.origX + resizing.origW - newW;
           updates.width = newW;
-          updates.x = resizing.origX + resizing.origW - newW;
+          updates.x = Math.max(0, newX);
+          if (newX < 0) updates.width = resizing.origX + resizing.origW;
         }
-        if (handle.includes('s')) { updates.height = Math.max(20, resizing.origH + dy); }
+        if (handle.includes('s')) { updates.height = Math.max(20, Math.min(resizing.origH + dy, containerH - resizing.origY)); }
         if (handle.includes('n')) {
           const newH = Math.max(20, resizing.origH - dy);
+          const newY = resizing.origY + resizing.origH - newH;
           updates.height = newH;
-          updates.y = resizing.origY + resizing.origH - newH;
+          updates.y = Math.max(0, newY);
+          if (newY < 0) updates.height = resizing.origY + resizing.origH;
         }
 
         updateElement(resizing.id, updates);
