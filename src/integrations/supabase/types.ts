@@ -247,6 +247,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_owns_order: {
+        Args: { _order_id: string; _user_id: string }
+        Returns: boolean
+      }
+      vendor_assigned_to_order: {
+        Args: { _order_id: string; _vendor_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "customer" | "vendor_printer" | "vendor_delivery" | "admin"
