@@ -27,12 +27,17 @@ export default function SaveProductDialog({ open, onOpenChange }: Props) {
   const { toast } = useToast();
 
   const generatePreview = async (): Promise<Blob | null> => {
-    // Render the garment SVG + design elements to a canvas
+    // Render the garment SVG + design elements to a high-res canvas (print-ready)
+    const SCALE = 4; // 4x for print quality
+    const BASE_W = 500;
+    const BASE_H = 580;
     const canvas = document.createElement('canvas');
-    canvas.width = 500;
-    canvas.height = 580;
+    canvas.width = BASE_W * SCALE;   // 2000px
+    canvas.height = BASE_H * SCALE;  // 2320px
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
+
+    ctx.scale(SCALE, SCALE);
 
     // Draw garment background
     ctx.fillStyle = garmentColor;
@@ -56,11 +61,11 @@ export default function SaveProductDialog({ open, onOpenChange }: Props) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Design area bounds (front view)
-    const dx = 500 * 0.30;
-    const dy = 580 * 0.22;
-    const dw = 500 * 0.40;
-    const dh = 580 * 0.50;
+    // Design area bounds (front view) — coordinates in base units
+    const dx = BASE_W * 0.30;
+    const dy = BASE_H * 0.22;
+    const dw = BASE_W * 0.40;
+    const dh = BASE_H * 0.50;
 
     // Draw design elements (front view only for preview)
     const frontElements = elements.filter(el => el.view === 'front');
