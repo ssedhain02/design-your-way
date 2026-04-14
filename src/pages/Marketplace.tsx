@@ -64,14 +64,24 @@ export default function Marketplace() {
         </div>
       </header>
 
-      <section className="py-16 px-4 text-center bg-accent/30">
-        <h1 className="text-4xl font-bold mb-4">Design Your Own Custom Apparel</h1>
-        <p className="text-muted-foreground text-lg mb-6 max-w-2xl mx-auto">
-          Create unique designs, order custom prints, and get them delivered to your door.
-        </p>
-        <Link to="/designer">
-          <Button size="lg"><Palette className="w-5 h-5 mr-2" />Start Designing</Button>
-        </Link>
+      <section className="py-20 px-4 text-center bg-accent/30 relative overflow-hidden">
+        {/* Animated floating t-shirt mockups */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute text-6xl animate-float-slow opacity-10" style={{ top: '10%', left: '8%' }}>👕</div>
+          <div className="absolute text-5xl animate-float-medium opacity-10" style={{ top: '20%', right: '12%' }}>🎨</div>
+          <div className="absolute text-4xl animate-float-fast opacity-10" style={{ bottom: '15%', left: '20%' }}>✏️</div>
+          <div className="absolute text-5xl animate-float-slow opacity-10" style={{ bottom: '20%', right: '25%' }}>👕</div>
+        </div>
+
+        <div className="relative z-10">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Design Your Own Custom Apparel</h1>
+          <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
+            Pick a blank garment, unleash your creativity, and get it printed & delivered.
+          </p>
+          <Link to="/marketplace">
+            <Button size="lg" className="text-lg px-8 py-6"><Palette className="w-5 h-5 mr-2" />Start Designing</Button>
+          </Link>
+        </div>
       </section>
 
       <section className="max-w-7xl mx-auto px-4 py-12">

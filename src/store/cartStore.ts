@@ -8,6 +8,9 @@ export interface CartItem {
   quantity: number;
   size: string;
   garmentColor: string;
+  designData?: any;
+  previewUrl?: string;
+  vendorProductId?: string;
 }
 
 interface CartState {

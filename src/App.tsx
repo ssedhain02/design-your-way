@@ -10,6 +10,7 @@ import Designer from "./pages/Index";
 import Login from "./pages/Login";
 import Cart from "./pages/Cart";
 import Orders from "./pages/Orders";
+import ProductSelection from "./pages/ProductSelection";
 import PrinterDashboard from "./pages/vendor/PrinterDashboard";
 import DeliveryDashboard from "./pages/vendor/DeliveryDashboard";
 import Admin from "./pages/Admin";
@@ -26,6 +27,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Marketplace />} />
+            <Route path="/marketplace" element={<ProductSelection />} />
             <Route path="/designer" element={<Designer />} />
             <Route path="/login" element={<Login />} />
             <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
