@@ -6,6 +6,15 @@ interface HistoryEntry {
   elements: DesignElement[];
 }
 
+export interface SelectedProduct {
+  id: string;
+  name: string;
+  colors: string[];
+  sizes: string[];
+  basePrice: number;
+  imageUrl: string | null;
+}
+
 interface DesignerState {
   activeView: GarmentView;
   elements: DesignElement[];
@@ -17,6 +26,8 @@ interface DesignerState {
   history: HistoryEntry[];
   historyIndex: number;
   clipboard: DesignElement | null;
+  selectedProduct: SelectedProduct | null;
+  selectedSize: string | null;
 
   setActiveView: (view: GarmentView) => void;
   addElement: (element: DesignElement) => void;
@@ -27,6 +38,8 @@ interface DesignerState {
   setMode: (mode: 'edit' | 'preview') => void;
   setGarmentColor: (color: string) => void;
   setActiveTool: (tool: string | null) => void;
+  setSelectedProduct: (product: SelectedProduct | null) => void;
+  setSelectedSize: (size: string | null) => void;
   undo: () => void;
   redo: () => void;
   canUndo: () => boolean;
