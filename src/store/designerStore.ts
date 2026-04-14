@@ -68,6 +68,12 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   history: [{ elements: [] }],
   historyIndex: 0,
   clipboard: null,
+  selectedProduct: null,
+  selectedSize: null,
+
+  setSelectedProduct: (product) => set({ selectedProduct: product }),
+  setSelectedSize: (size) => set({ selectedSize: size }),
+  clipboard: null,
 
   setActiveView: (view) => set({ activeView: view, selectedElementId: null }),
 

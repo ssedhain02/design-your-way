@@ -24,10 +24,10 @@ export default function ProductSelection() {
 
   useEffect(() => {
     supabase
-      .from('vendor_products')
+      .from('vendor_products' as any)
       .select('*')
       .eq('is_active', true)
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         const mapped = (data || []).map((p: any) => ({
           ...p,
           colors: Array.isArray(p.colors) ? p.colors : JSON.parse(p.colors || '[]'),
