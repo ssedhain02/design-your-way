@@ -6,10 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useDesignerStore } from '@/store/designerStore';
+import { useCartStore } from '@/store/cartStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ShoppingCart, Save } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -19,21 +20,21 @@ interface Props {
 export default function SaveProductDialog({ open, onOpenChange }: Props) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('29.99');
   const [saving, setSaving] = useState(false);
-  const { elements, garmentColor } = useDesignerStore();
+  const [addingToCart, setAddingToCart] = useState(false);
+  const { elements, garmentColor, selectedProduct, selectedSize } = useDesignerStore();
+  const addItem = useCartStore(s => s.addItem);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const generatePreview = async (): Promise<Blob | null> => {
-    // Render the garment SVG + design elements to a high-res canvas (print-ready)
-    const SCALE = 4; // 4x for print quality
+    const SCALE = 4;
     const BASE_W = 500;
     const BASE_H = 580;
     const canvas = document.createElement('canvas');
-    canvas.width = BASE_W * SCALE;   // 2000px
-    canvas.height = BASE_H * SCALE;  // 2320px
+    canvas.width = BASE_W * SCALE;
+    canvas.height = BASE_H * SCALE;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
@@ -61,13 +62,11 @@ export default function SaveProductDialog({ open, onOpenChange }: Props) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Design area bounds (front view) — coordinates in base units
     const dx = BASE_W * 0.30;
     const dy = BASE_H * 0.22;
     const dw = BASE_W * 0.40;
     const dh = BASE_H * 0.50;
 
-    // Draw design elements (front view only for preview)
     const frontElements = elements.filter(el => el.view === 'front');
     for (const el of frontElements) {
       const ex = dx + (el.x / 200) * dw;
@@ -113,83 +112,124 @@ export default function SaveProductDialog({ open, onOpenChange }: Props) {
     return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
   };
 
+  const uploadPreview = async (): Promise<string | null> => {
+    if (!user) return null;
+    const blob = await generatePreview();
+    if (!blob) return null;
+
+    const fileName = `${user.id}/${Date.now()}.png`;
+    const { error: uploadErr } = await supabase.storage
+      .from('product-images')
+      .upload(fileName, blob, { contentType: 'image/png' });
+
+    if (uploadErr) return null;
+    const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(fileName);
+    return urlData.publicUrl;
+  };
+
   const handleSave = async () => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
+    if (!user) { navigate('/login'); return; }
     if (!title.trim()) return;
 
     setSaving(true);
     try {
-      // Generate preview image
-      const blob = await generatePreview();
-      let imageUrl: string | null = null;
+      const imageUrl = await uploadPreview();
 
-      if (blob) {
-        const fileName = `${user.id}/${Date.now()}.png`;
-        const { error: uploadErr } = await supabase.storage
-          .from('product-images')
-          .upload(fileName, blob, { contentType: 'image/png' });
-
-        if (!uploadErr) {
-          const { data: urlData } = supabase.storage
-            .from('product-images')
-            .getPublicUrl(fileName);
-          imageUrl = urlData.publicUrl;
-        }
-      }
-
-      // Insert product
       const { error } = await supabase.from('products').insert({
         user_id: user.id,
         title: title.trim(),
         description: description.trim() || null,
-        price: parseFloat(price) || 0,
+        price: selectedProduct?.basePrice || 0,
         garment_color: garmentColor,
-        garment_type: 't-shirt',
+        garment_type: selectedProduct?.name || 't-shirt',
         design_data: elements as any,
         image_url: imageUrl,
-        is_published: true,
+        is_published: false, // Private save — not published
       });
 
       if (error) throw error;
 
-      toast({ title: 'Product published!', description: 'Your design is now live in the marketplace.' });
+      toast({ title: 'Design saved!', description: 'Your design is saved to your profile for reordering.' });
       onOpenChange(false);
       setTitle('');
       setDescription('');
-      setPrice('29.99');
     } catch (err: any) {
-      toast({ title: 'Error saving product', description: err.message, variant: 'destructive' });
+      toast({ title: 'Error saving design', description: err.message, variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
+  const handleAddToCart = async () => {
+    if (!user) { navigate('/login'); return; }
+    if (!selectedSize) {
+      toast({ title: 'Select a size', description: 'Please select a size before adding to cart.', variant: 'destructive' });
+      return;
+    }
+
+    setAddingToCart(true);
+    try {
+      const imageUrl = await uploadPreview();
+
+      addItem({
+        productId: selectedProduct?.id || 'custom-design',
+        title: title.trim() || selectedProduct?.name || 'Custom Design',
+        price: selectedProduct?.basePrice || 0,
+        quantity: 1,
+        size: selectedSize,
+        garmentColor: garmentColor,
+        designData: elements,
+        previewUrl: imageUrl || undefined,
+        vendorProductId: selectedProduct?.id,
+      });
+
+      toast({ title: 'Added to cart!', description: 'Your custom design has been added to your cart.' });
+      onOpenChange(false);
+      navigate('/cart');
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setAddingToCart(false);
+    }
+  };
+
+  const busy = saving || addingToCart;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Publish Design</DialogTitle>
-          <DialogDescription>Save your design to the marketplace for others to purchase.</DialogDescription>
+          <DialogTitle>Save Design</DialogTitle>
+          <DialogDescription>Save your design to your profile or add it directly to your cart.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label htmlFor="title">Title *</Label>
+            <Label htmlFor="title">Design Name</Label>
             <Input id="title" value={title} onChange={e => setTitle(e.target.value)} placeholder="My Custom Tee" />
           </div>
           <div>
-            <Label htmlFor="description">Description</Label>
-            <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} placeholder="A brief description of your design" rows={3} />
+            <Label htmlFor="description">Description (optional)</Label>
+            <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} placeholder="A brief description" rows={2} />
           </div>
-          <div>
-            <Label htmlFor="price">Price ($)</Label>
-            <Input id="price" type="number" min="0" step="0.01" value={price} onChange={e => setPrice(e.target.value)} />
+
+          {selectedProduct && (
+            <div className="text-sm text-muted-foreground space-y-1 p-3 bg-muted rounded-lg">
+              <p><strong>Product:</strong> {selectedProduct.name}</p>
+              <p><strong>Price:</strong> ${selectedProduct.basePrice.toFixed(2)}</p>
+              {selectedSize && <p><strong>Size:</strong> {selectedSize}</p>}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={handleSave} disabled={busy || !title.trim()}>
+              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              Save to Profile
+            </Button>
+            <Button className="flex-1" onClick={handleAddToCart} disabled={busy}>
+              {addingToCart ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ShoppingCart className="w-4 h-4 mr-2" />}
+              Add to Cart
+            </Button>
           </div>
-          <Button className="w-full" onClick={handleSave} disabled={saving || !title.trim()}>
-            {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : 'Publish to Marketplace'}
-          </Button>
         </div>
       </DialogContent>
     </Dialog>
