@@ -73,7 +73,6 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   setSelectedProduct: (product) => set({ selectedProduct: product }),
   setSelectedSize: (size) => set({ selectedSize: size }),
-  clipboard: null,
 
   setActiveView: (view) => set({ activeView: view, selectedElementId: null }),
 
