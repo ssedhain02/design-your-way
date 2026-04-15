@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
-import { LogOut, Printer, Plus, Trash2 } from 'lucide-react';
+import { LogOut, Printer, Plus, Trash2, Download, Image } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface VendorProduct {
