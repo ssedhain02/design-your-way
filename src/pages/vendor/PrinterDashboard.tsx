@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
-import { LogOut, Printer, Plus, Trash2, Download, Image } from 'lucide-react';
+import { LogOut, Printer, Plus, Trash2, Download, Image, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface VendorProduct {
@@ -29,6 +29,9 @@ export default function PrinterDashboard() {
   const [vendorProducts, setVendorProducts] = useState<VendorProduct[]>([]);
   const [productForm, setProductForm] = useState({ name: '', description: '', base_price: '15.00', colors: '#ffffff,#000000', sizes: 'S,M,L,XL,XXL' });
   const [savingProduct, setSavingProduct] = useState(false);
+  const [productImage, setProductImage] = useState<File | null>(null);
+  const [productImagePreview, setProductImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -55,7 +58,7 @@ export default function PrinterDashboard() {
 
   const fetchVendorProducts = async () => {
     if (!user) return;
-    const { data } = await (supabase.from('vendor_products' as any).select('*').eq('vendor_id', user.id) as any);
+    const { data } = await supabase.from('vendor_products').select('*').eq('vendor_id', user.id);
     setVendorProducts((data || []).map((p: any) => ({
       ...p,
       colors: Array.isArray(p.colors) ? p.colors : JSON.parse(p.colors || '[]'),
@@ -73,21 +76,46 @@ export default function PrinterDashboard() {
     await supabase.from('orders').update({ status: 'ready_for_pickup' }).eq('id', orderId);
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProductImage(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setProductImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const handleAddProduct = async () => {
     if (!user || !productForm.name.trim()) return;
     setSavingProduct(true);
     try {
-      const { error } = await (supabase.from('vendor_products' as any).insert({
+      let imageUrl: string | null = null;
+
+      if (productImage) {
+        const ext = productImage.name.split('.').pop() || 'png';
+        const path = `vendor-products/${user.id}/${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(path, productImage, { contentType: productImage.type });
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(path);
+        imageUrl = urlData.publicUrl;
+      }
+
+      const { error } = await supabase.from('vendor_products').insert({
         vendor_id: user.id,
         name: productForm.name.trim(),
         description: productForm.description.trim() || null,
         base_price: parseFloat(productForm.base_price) || 0,
         colors: productForm.colors.split(',').map(c => c.trim()).filter(Boolean),
         sizes: productForm.sizes.split(',').map(s => s.trim()).filter(Boolean),
-      }) as any);
+        image_url: imageUrl,
+      } as any);
       if (error) throw error;
       toast({ title: 'Product listed!' });
       setProductForm({ name: '', description: '', base_price: '15.00', colors: '#ffffff,#000000', sizes: 'S,M,L,XL,XXL' });
+      setProductImage(null);
+      setProductImagePreview(null);
       fetchVendorProducts();
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
@@ -97,7 +125,7 @@ export default function PrinterDashboard() {
   };
 
   const deleteProduct = async (id: string) => {
-    await (supabase.from('vendor_products' as any).delete().eq('id', id) as any);
+    await supabase.from('vendor_products').delete().eq('id', id);
     fetchVendorProducts();
   };
 
@@ -227,6 +255,25 @@ export default function PrinterDashboard() {
                   <Label>Description</Label>
                   <Textarea value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))} rows={2} placeholder="Cotton fabric, comfortable wear" />
                 </div>
+                <div className="col-span-2">
+                  <Label>Product Image</Label>
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+                  <div className="flex items-center gap-4 mt-1">
+                    <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                      <Upload className="w-4 h-4 mr-1" /> Choose Image
+                    </Button>
+                    {productImagePreview && (
+                      <div className="relative">
+                        <img src={productImagePreview} alt="Preview" className="w-16 h-16 rounded object-contain border border-border" />
+                        <button
+                          className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-4 h-4 text-xs flex items-center justify-center"
+                          onClick={() => { setProductImage(null); setProductImagePreview(null); }}
+                        >×</button>
+                      </div>
+                    )}
+                    {!productImagePreview && <span className="text-xs text-muted-foreground">No image selected</span>}
+                  </div>
+                </div>
               </div>
               <Button className="mt-4" onClick={handleAddProduct} disabled={savingProduct || !productForm.name.trim()}>
                 {savingProduct ? 'Saving...' : 'List Product'}
@@ -238,20 +285,29 @@ export default function PrinterDashboard() {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {vendorProducts.map(p => (
-                  <div key={p.id} className="border border-border rounded-lg p-4 bg-card">
-                    <h4 className="font-semibold">{p.name}</h4>
-                    <p className="text-sm text-muted-foreground">${Number(p.base_price).toFixed(2)}</p>
-                    <div className="flex gap-1 mt-2">
-                      {p.colors.map((c, i) => (
-                        <div key={i} className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: c }} />
-                      ))}
+                  <div key={p.id} className="border border-border rounded-lg overflow-hidden bg-card">
+                    {p.image_url ? (
+                      <div className="aspect-square bg-muted flex items-center justify-center">
+                        <img src={p.image_url} alt={p.name} className="w-full h-full object-contain" />
+                      </div>
+                    ) : (
+                      <div className="aspect-square bg-muted flex items-center justify-center text-4xl">👕</div>
+                    )}
+                    <div className="p-4">
+                      <h4 className="font-semibold">{p.name}</h4>
+                      <p className="text-sm text-muted-foreground">${Number(p.base_price).toFixed(2)}</p>
+                      <div className="flex gap-1 mt-2">
+                        {p.colors.map((c, i) => (
+                          <div key={i} className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: c }} />
+                        ))}
+                      </div>
+                      <div className="flex gap-1 mt-2 flex-wrap">
+                        {p.sizes.map(s => <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>)}
+                      </div>
+                      <Button variant="ghost" size="sm" className="mt-3 text-destructive" onClick={() => deleteProduct(p.id)}>
+                        <Trash2 className="w-3 h-3 mr-1" />Remove
+                      </Button>
                     </div>
-                    <div className="flex gap-1 mt-2 flex-wrap">
-                      {p.sizes.map(s => <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>)}
-                    </div>
-                    <Button variant="ghost" size="sm" className="mt-3 text-destructive" onClick={() => deleteProduct(p.id)}>
-                      <Trash2 className="w-3 h-3 mr-1" />Remove
-                    </Button>
                   </div>
                 ))}
               </div>
