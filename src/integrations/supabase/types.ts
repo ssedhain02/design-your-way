@@ -235,6 +235,48 @@ export type Database = {
           },
         ]
       }
+      vendor_products: {
+        Row: {
+          base_price: number
+          colors: Json
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          sizes: Json
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          base_price?: number
+          colors?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          sizes?: Json
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          base_price?: number
+          colors?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          sizes?: Json
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
