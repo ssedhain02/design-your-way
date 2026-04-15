@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
-import { LogOut, Printer, Plus, Trash2 } from 'lucide-react';
+import { LogOut, Printer, Plus, Trash2, Download, Image } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface VendorProduct {
@@ -137,11 +137,34 @@ export default function PrinterDashboard() {
                 {assignments.map(a => {
                   const items = a.orders?.order_items || [];
                   const firstProduct = items[0]?.products;
+                  const designSnapshot = items[0]?.design_snapshot;
+
+                  const handleDownloadArtwork = (imageUrl: string, orderId: string) => {
+                    const link = document.createElement('a');
+                    link.href = imageUrl;
+                    link.download = `artwork-${orderId.slice(0, 8)}.png`;
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  };
+
                   return (
                     <div key={a.id} className="border border-border rounded-lg p-4 bg-card">
                       <div className="flex gap-4">
                         {firstProduct?.image_url && (
-                          <img src={firstProduct.image_url} alt="" className="w-20 h-20 rounded object-contain border border-border" style={{ backgroundColor: firstProduct.garment_color }} />
+                          <div className="flex flex-col items-center gap-2">
+                            <img src={firstProduct.image_url} alt="" className="w-24 h-24 rounded object-contain border border-border" style={{ backgroundColor: firstProduct.garment_color }} />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs gap-1"
+                              onClick={() => handleDownloadArtwork(firstProduct.image_url, a.orders?.id || '')}
+                            >
+                              <Download className="w-3 h-3" /> Download HD
+                            </Button>
+                          </div>
                         )}
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">
@@ -153,7 +176,19 @@ export default function PrinterDashboard() {
                               <p key={i}>{item.products?.title || 'Product'} — Size: {item.size || 'N/A'} × {item.quantity}</p>
                             ))}
                             <p className="font-medium text-foreground">${Number(a.orders?.total_amount || 0).toFixed(2)}</p>
+                            {firstProduct?.garment_color && (
+                              <div className="flex items-center gap-1">
+                                <span>Garment:</span>
+                                <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: firstProduct.garment_color }} />
+                              </div>
+                            )}
                           </div>
+                          {designSnapshot && (
+                            <div className="mb-3 p-2 bg-muted rounded text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1 mb-1"><Image className="w-3 h-3" /> Design Details</div>
+                              <p>{Array.isArray(designSnapshot) ? `${(designSnapshot as any[]).length} element(s)` : 'Custom design included'}</p>
+                            </div>
+                          )}
                           {a.orders?.shipping_address && <p className="text-sm text-muted-foreground mb-3">📍 {a.orders.shipping_address}</p>}
                           <div className="flex gap-2">
                             {a.status === 'pending' && <Button size="sm" onClick={() => acceptJob(a.id, a.order_id)}>Accept & Start Printing</Button>}
