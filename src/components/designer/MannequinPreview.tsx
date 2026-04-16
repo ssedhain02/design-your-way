@@ -5,145 +5,190 @@ import * as THREE from 'three';
 import { useDesignerStore } from '@/store/designerStore';
 
 /**
- * Photoroom-style invisible/ghost mannequin T-shirt.
- * The garment is a smooth, rounded torso shape with realistic sleeves.
- * There is NO head/neck — just the garment floating in space (invisible mannequin effect).
- * The user's design is projected onto the chest area.
+ * Realistic mannequin: human-like body (skin) wearing a t-shirt with the user's design.
+ * Includes torso, neck, head silhouette, and arms beneath the garment.
  */
 
-function GhostTShirt({ color, designTexture }: { color: string; designTexture: THREE.Texture | null }) {
-  const groupRef = useRef<THREE.Group>(null);
-
-  useFrame((_, delta) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.2;
-    }
-  });
-
-  const garmentMat = useMemo(
-    () =>
-      new THREE.MeshPhysicalMaterial({
-        color,
-        roughness: 0.85,
-        metalness: 0.0,
-        clearcoat: 0.05,
-        side: THREE.DoubleSide,
-      }),
-    [color]
-  );
-
-  // Inner shadow material — dark, semi-transparent to fake depth inside collar/sleeves
-  const innerMat = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: '#1a1a1a',
-        roughness: 1,
-        metalness: 0,
-        transparent: true,
-        opacity: 0.6,
-        side: THREE.BackSide,
-      }),
+// Skin-toned body underneath
+function HumanBody() {
+  const skinMat = useMemo(
+    () => new THREE.MeshPhysicalMaterial({
+      color: '#d4a574',
+      roughness: 0.7,
+      metalness: 0.0,
+      clearcoat: 0.1,
+    }),
     []
   );
 
-  // --- TORSO (front panel — ExtrudeGeometry) ---
+  // Torso - elongated sphere
   const torsoGeo = useMemo(() => {
-    const shape = new THREE.Shape();
-    // Bottom hem
-    shape.moveTo(-0.72, -1.15);
-    // Left side up
-    shape.lineTo(-0.72, 0.35);
-    // Left shoulder slope
-    shape.quadraticCurveTo(-0.72, 0.72, -0.48, 0.82);
-    // Neckline curve (V/crew style)
-    shape.quadraticCurveTo(-0.25, 0.88, 0, 0.72);
-    shape.quadraticCurveTo(0.25, 0.88, 0.48, 0.82);
-    // Right shoulder slope
-    shape.quadraticCurveTo(0.72, 0.72, 0.72, 0.35);
-    // Right side down
-    shape.lineTo(0.72, -1.15);
-    // Bottom hem close
-    shape.lineTo(-0.72, -1.15);
-
-    const geo = new THREE.ExtrudeGeometry(shape, {
-      depth: 0.5,
-      bevelEnabled: true,
-      bevelThickness: 0.06,
-      bevelSize: 0.05,
-      bevelSegments: 6,
-    });
-    geo.center();
+    const geo = new THREE.CapsuleGeometry(0.38, 0.9, 12, 24);
+    geo.scale(1, 1, 0.75);
     return geo;
   }, []);
 
-  // --- SLEEVE geometry ---
-  const sleeveGeo = useMemo(() => {
+  // Neck
+  const neckGeo = useMemo(() => new THREE.CylinderGeometry(0.1, 0.12, 0.2, 16), []);
+
+  // Head - sphere
+  const headGeo = useMemo(() => {
+    const geo = new THREE.SphereGeometry(0.18, 24, 24);
+    geo.scale(1, 1.1, 0.95);
+    return geo;
+  }, []);
+
+  // Upper arm
+  const upperArmGeo = useMemo(() => new THREE.CapsuleGeometry(0.09, 0.35, 8, 12), []);
+  // Forearm
+  const forearmGeo = useMemo(() => new THREE.CapsuleGeometry(0.07, 0.32, 8, 12), []);
+
+  return (
+    <group>
+      {/* Torso */}
+      <mesh geometry={torsoGeo} material={skinMat} position={[0, -0.15, 0]} />
+
+      {/* Neck */}
+      <mesh geometry={neckGeo} material={skinMat} position={[0, 0.65, 0]} />
+
+      {/* Head */}
+      <mesh geometry={headGeo} material={skinMat} position={[0, 0.88, 0]} />
+
+      {/* Left arm */}
+      <group position={[-0.48, 0.25, 0]}>
+        <mesh geometry={upperArmGeo} material={skinMat} rotation={[0, 0, 0.2]} position={[-0.12, -0.05, 0]} />
+        <mesh geometry={forearmGeo} material={skinMat} rotation={[0, 0, 0.15]} position={[-0.22, -0.45, 0]} />
+      </group>
+
+      {/* Right arm */}
+      <group position={[0.48, 0.25, 0]}>
+        <mesh geometry={upperArmGeo} material={skinMat} rotation={[0, 0, -0.2]} position={[0.12, -0.05, 0]} />
+        <mesh geometry={forearmGeo} material={skinMat} rotation={[0, 0, -0.15]} position={[0.22, -0.45, 0]} />
+      </group>
+    </group>
+  );
+}
+
+// T-shirt garment layered on body
+function TShirtGarment({ color, designTexture }: { color: string; designTexture: THREE.Texture | null }) {
+  const garmentMat = useMemo(
+    () => new THREE.MeshPhysicalMaterial({
+      color,
+      roughness: 0.88,
+      metalness: 0.0,
+      clearcoat: 0.03,
+      side: THREE.FrontSide,
+    }),
+    [color]
+  );
+
+  // Main torso shell - slightly larger than body
+  const torsoGeo = useMemo(() => {
     const shape = new THREE.Shape();
-    shape.moveTo(0, 0.05);
-    shape.quadraticCurveTo(0.15, 0.08, 0.48, -0.05);
-    shape.lineTo(0.55, -0.48);
-    shape.quadraticCurveTo(0.5, -0.52, 0.42, -0.48);
-    shape.lineTo(0.08, -0.38);
-    shape.lineTo(0, 0.05);
+    // Bottom hem
+    shape.moveTo(-0.48, -0.7);
+    // Left side with slight waist curve
+    shape.quadraticCurveTo(-0.5, -0.2, -0.52, 0.1);
+    // Left shoulder area widening
+    shape.quadraticCurveTo(-0.54, 0.35, -0.5, 0.45);
+    // Left shoulder top
+    shape.lineTo(-0.42, 0.52);
+    // Neckline curve
+    shape.quadraticCurveTo(-0.2, 0.58, 0, 0.5);
+    shape.quadraticCurveTo(0.2, 0.58, 0.42, 0.52);
+    // Right shoulder
+    shape.lineTo(0.5, 0.45);
+    shape.quadraticCurveTo(0.54, 0.35, 0.52, 0.1);
+    // Right side
+    shape.quadraticCurveTo(0.5, -0.2, 0.48, -0.7);
+    // Bottom close
+    shape.quadraticCurveTo(0, -0.73, -0.48, -0.7);
 
     return new THREE.ExtrudeGeometry(shape, {
-      depth: 0.42,
+      depth: 0.55,
       bevelEnabled: true,
       bevelThickness: 0.04,
       bevelSize: 0.03,
+      bevelSegments: 5,
+    });
+  }, []);
+
+  // Sleeve geometry
+  const sleeveGeo = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0.12);
+    shape.quadraticCurveTo(0.08, 0.14, 0.32, 0.05);
+    shape.quadraticCurveTo(0.42, 0.0, 0.48, -0.18);
+    shape.lineTo(0.45, -0.28);
+    shape.quadraticCurveTo(0.38, -0.22, 0.25, -0.15);
+    shape.quadraticCurveTo(0.1, -0.08, 0, -0.1);
+    shape.lineTo(0, 0.12);
+
+    return new THREE.ExtrudeGeometry(shape, {
+      depth: 0.38,
+      bevelEnabled: true,
+      bevelThickness: 0.03,
+      bevelSize: 0.02,
       bevelSegments: 3,
     });
   }, []);
 
-  // --- COLLAR ring ---
+  // Collar ring
   const collarGeo = useMemo(() => {
     const shape = new THREE.Shape();
-    shape.absellipse(0, 0, 0.28, 0.15, 0, Math.PI * 2, false, 0);
+    shape.absellipse(0, 0, 0.2, 0.12, 0, Math.PI * 2, false, 0);
     const hole = new THREE.Path();
-    hole.absellipse(0, 0, 0.24, 0.12, 0, Math.PI * 2, false, 0);
+    hole.absellipse(0, 0, 0.17, 0.1, 0, Math.PI * 2, false, 0);
     shape.holes.push(hole);
     return new THREE.ExtrudeGeometry(shape, {
-      depth: 0.06,
+      depth: 0.05,
       bevelEnabled: true,
       bevelThickness: 0.01,
-      bevelSize: 0.01,
+      bevelSize: 0.008,
       bevelSegments: 2,
     });
   }, []);
 
   return (
-    <group ref={groupRef} position={[0, -0.1, 0]}>
-      {/* Main torso */}
-      <mesh geometry={torsoGeo} material={garmentMat} />
-      {/* Inner darkness for hollow effect */}
-      <mesh geometry={torsoGeo} material={innerMat} />
+    <group>
+      {/* Main torso shell */}
+      <mesh geometry={torsoGeo} material={garmentMat} position={[0, -0.1, -0.275]} />
 
       {/* Left sleeve */}
-      <mesh geometry={sleeveGeo} material={garmentMat} position={[-0.66, 0.28, -0.2]} rotation={[0, 0, 0.12]} />
-      <mesh geometry={sleeveGeo} material={innerMat} position={[-0.66, 0.28, -0.2]} rotation={[0, 0, 0.12]} />
+      <mesh geometry={sleeveGeo} material={garmentMat} position={[-0.48, 0.22, -0.19]} rotation={[0, 0, 0.1]} />
 
       {/* Right sleeve (mirrored) */}
-      <group position={[0.66, 0.28, 0.22]} rotation={[0, Math.PI, -0.12]} scale={[1, 1, 1]}>
+      <group position={[0.48, 0.22, 0.19]} rotation={[0, Math.PI, -0.1]}>
         <mesh geometry={sleeveGeo} material={garmentMat} />
-        <mesh geometry={sleeveGeo} material={innerMat} />
       </group>
 
-      {/* Collar ring */}
-      <mesh geometry={collarGeo} material={garmentMat} position={[0, 0.72, -0.01]} rotation={[Math.PI / 2, 0, 0]} />
-
-      {/* Inner collar shadow (dark ring inside neck) */}
-      <mesh position={[0, 0.68, 0.02]}>
-        <cylinderGeometry args={[0.22, 0.24, 0.12, 24, 1, true]} />
-        <meshStandardMaterial color="#111" transparent opacity={0.5} side={THREE.BackSide} />
-      </mesh>
+      {/* Collar */}
+      <mesh geometry={collarGeo} material={garmentMat} position={[0, 0.52, 0]} rotation={[Math.PI / 2, 0, 0]} />
 
       {/* Design overlay on front */}
       {designTexture && (
-        <mesh position={[0, -0.08, 0.33]}>
-          <planeGeometry args={[0.95, 1.2]} />
+        <mesh position={[0, -0.12, 0.31]}>
+          <planeGeometry args={[0.7, 0.9]} />
           <meshBasicMaterial map={designTexture} transparent depthWrite={false} polygonOffset polygonOffsetFactor={-1} />
         </mesh>
       )}
+    </group>
+  );
+}
+
+function FullMannequin({ color, designTexture }: { color: string; designTexture: THREE.Texture | null }) {
+  const groupRef = useRef<THREE.Group>(null);
+
+  useFrame((_, delta) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y += delta * 0.15;
+    }
+  });
+
+  return (
+    <group ref={groupRef} position={[0, -0.2, 0]}>
+      <HumanBody />
+      <TShirtGarment color={color} designTexture={designTexture} />
     </group>
   );
 }
@@ -152,7 +197,6 @@ function useDesignTexture() {
   const { elements } = useDesignerStore();
   const [imageLoadKey, setImageLoadKey] = useState(0);
 
-  // Load images and trigger re-render
   useEffect(() => {
     const imageElements = elements.filter(el => el.type === 'image' && el.view === 'front');
     if (imageElements.length === 0) return;
@@ -228,11 +272,11 @@ export default function MannequinPreview() {
     <div className="w-full h-full bg-gradient-to-b from-muted to-muted/50 rounded-lg overflow-hidden">
       <Canvas camera={{ position: [0, 0.3, 3.2], fov: 32 }} gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}>
         <Suspense fallback={null}>
-          <ambientLight intensity={0.6} />
+          <ambientLight intensity={0.55} />
           <directionalLight position={[3, 5, 5]} intensity={1.0} castShadow />
-          <directionalLight position={[-3, 3, -2]} intensity={0.35} />
+          <directionalLight position={[-3, 3, -2]} intensity={0.3} />
           <directionalLight position={[0, -2, 3]} intensity={0.15} />
-          <GhostTShirt color={garmentColor} designTexture={designTexture} />
+          <FullMannequin color={garmentColor} designTexture={designTexture} />
           <OrbitControls enableZoom enablePan={false} minPolarAngle={Math.PI / 4} maxPolarAngle={Math.PI / 1.5} minDistance={2} maxDistance={5} />
           <Environment preset="studio" />
         </Suspense>
