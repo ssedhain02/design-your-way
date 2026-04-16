@@ -1,44 +1,51 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, LogOut, Package, Palette } from 'lucide-react';
+import { ShoppingCart, LogOut, Package, Palette, ChevronRight } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 
-interface Product {
+interface VendorProduct {
   id: string;
-  title: string;
-  description: string | null;
-  price: number;
-  garment_type: string;
-  garment_color: string;
+  name: string;
   image_url: string | null;
+  colors: string[];
+  sizes: string[];
+  description: string | null;
+  base_price: number;
 }
 
-const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
-
 export default function Marketplace() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<VendorProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, signOut, hasRole } = useAuth();
   const cartCount = useCartStore(s => s.items.length);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.from('products').select('*').eq('is_published', true)
-      .then(({ data }) => { setProducts(data || []); setLoading(false); });
+    supabase
+      .from('vendor_products')
+      .select('*')
+      .eq('is_active', true)
+      .then(({ data }: any) => {
+        const mapped = (data || []).map((p: any) => ({
+          ...p,
+          colors: Array.isArray(p.colors) ? p.colors : JSON.parse(p.colors || '[]'),
+          sizes: Array.isArray(p.sizes) ? p.sizes : JSON.parse(p.sizes || '[]'),
+        }));
+        setProducts(mapped);
+        setLoading(false);
+      });
   }, []);
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="text-xl font-bold">Custom Wear Studio</Link>
-          <nav className="flex items-center gap-3">
-            <Link to="/designer">
-              <Button variant="outline" size="sm"><Palette className="w-4 h-4 mr-2" />Design</Button>
-            </Link>
+      {/* Navigation */}
+      <header className="border-b border-border bg-card sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <Link to="/" className="text-xl font-bold tracking-tight">Custom Wear Studio</Link>
+          <nav className="flex items-center gap-2">
             {user ? (
               <>
                 <Link to="/orders">
@@ -52,8 +59,8 @@ export default function Marketplace() {
                     )}
                   </Button>
                 </Link>
-                {hasRole('vendor_printer') && <Link to="/vendor/printer"><Button variant="ghost" size="sm">Printer Panel</Button></Link>}
-                {hasRole('vendor_delivery') && <Link to="/vendor/delivery"><Button variant="ghost" size="sm">Delivery Panel</Button></Link>}
+                {hasRole('vendor_printer') && <Link to="/vendor/printer"><Button variant="ghost" size="sm">Printer</Button></Link>}
+                {hasRole('vendor_delivery') && <Link to="/vendor/delivery"><Button variant="ghost" size="sm">Delivery</Button></Link>}
                 {hasRole('admin') && <Link to="/admin"><Button variant="ghost" size="sm">Admin</Button></Link>}
                 <Button variant="ghost" size="sm" onClick={signOut}><LogOut className="w-4 h-4" /></Button>
               </>
@@ -64,94 +71,167 @@ export default function Marketplace() {
         </div>
       </header>
 
-      <section className="py-20 px-4 text-center bg-accent/30 relative overflow-hidden">
-        {/* Animated floating t-shirt mockups */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute text-6xl animate-float-slow opacity-10" style={{ top: '10%', left: '8%' }}>👕</div>
-          <div className="absolute text-5xl animate-float-medium opacity-10" style={{ top: '20%', right: '12%' }}>🎨</div>
-          <div className="absolute text-4xl animate-float-fast opacity-10" style={{ bottom: '15%', left: '20%' }}>✏️</div>
-          <div className="absolute text-5xl animate-float-slow opacity-10" style={{ bottom: '20%', right: '25%' }}>👕</div>
+      {/* Hero Section */}
+      <section className="relative overflow-hidden bg-foreground text-primary-foreground">
+        <div className="max-w-7xl mx-auto px-4 py-16 md:py-24 flex flex-col md:flex-row items-center gap-8">
+          <div className="flex-1 space-y-6 z-10">
+            <h1 className="text-4xl md:text-6xl font-bold leading-tight tracking-tight">
+              Design Your<br />Own Clothing
+            </h1>
+            <p className="text-lg opacity-80 max-w-md">
+              Pick a garment, upload your artwork, and we'll print & deliver it. Bring your imagination to life.
+            </p>
+            <Button
+              size="lg"
+              className="text-lg px-8 py-6 bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => navigate('/marketplace')}
+            >
+              <Palette className="w-5 h-5 mr-2" />
+              Shop Now
+            </Button>
+          </div>
+          <div className="flex-1 relative flex items-center justify-center">
+            {/* Decorative floating elements */}
+            <div className="relative w-72 h-80 md:w-80 md:h-96">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-[120px] md:text-[160px] opacity-20 animate-float-slow">👕</div>
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="bg-primary/20 backdrop-blur-sm rounded-2xl px-8 py-6 text-center border border-primary/30">
+                  <p className="text-2xl md:text-3xl font-bold">YOUR DESIGN</p>
+                  <p className="text-lg opacity-70">HERE</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      </section>
 
-        <div className="relative z-10">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Design Your Own Custom Apparel</h1>
-          <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
-            Pick a blank garment, unleash your creativity, and get it printed & delivered.
-          </p>
-          <Link to="/marketplace">
-            <Button size="lg" className="text-lg px-8 py-6"><Palette className="w-5 h-5 mr-2" />Start Designing</Button>
+      {/* Shop By Category */}
+      <section className="max-w-7xl mx-auto px-4 py-16">
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-10 tracking-tight">Shop By Category</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Customize Your Clothes — main CTA */}
+          <Link
+            to="/marketplace"
+            className="group relative rounded-2xl overflow-hidden aspect-[4/5] bg-foreground text-primary-foreground flex flex-col justify-end p-6 hover:shadow-xl transition-shadow"
+          >
+            <div className="absolute inset-0 flex items-center justify-center opacity-30 group-hover:opacity-40 transition-opacity">
+              <span className="text-[100px]">🎨</span>
+            </div>
+            <div className="relative z-10">
+              <h3 className="text-xl font-bold mb-1">Customize Your Clothes</h3>
+              <p className="text-sm opacity-70 mb-3">Upload your design on any garment</p>
+              <span className="inline-flex items-center text-sm font-medium text-primary">
+                Start Designing <ChevronRight className="w-4 h-4 ml-1" />
+              </span>
+            </div>
+          </Link>
+
+          {/* Browse Products */}
+          <Link
+            to="/marketplace"
+            className="group relative rounded-2xl overflow-hidden aspect-[4/5] bg-accent flex flex-col justify-end p-6 hover:shadow-xl transition-shadow"
+          >
+            <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-30 transition-opacity">
+              <span className="text-[100px]">👕</span>
+            </div>
+            <div className="relative z-10">
+              <h3 className="text-xl font-bold mb-1">Plain T-Shirts</h3>
+              <p className="text-sm text-muted-foreground mb-3">Premium blank garments ready for your art</p>
+              <span className="inline-flex items-center text-sm font-medium text-primary">
+                Browse <ChevronRight className="w-4 h-4 ml-1" />
+              </span>
+            </div>
+          </Link>
+
+          {/* Direct to Designer */}
+          <Link
+            to="/designer"
+            className="group relative rounded-2xl overflow-hidden aspect-[4/5] bg-secondary flex flex-col justify-end p-6 hover:shadow-xl transition-shadow"
+          >
+            <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-30 transition-opacity">
+              <span className="text-[100px]">✏️</span>
+            </div>
+            <div className="relative z-10">
+              <h3 className="text-xl font-bold mb-1">Design Studio</h3>
+              <p className="text-sm text-muted-foreground mb-3">Jump straight into the design tool</p>
+              <span className="inline-flex items-center text-sm font-medium text-primary">
+                Open Studio <ChevronRight className="w-4 h-4 ml-1" />
+              </span>
+            </div>
           </Link>
         </div>
       </section>
 
-      <section className="max-w-7xl mx-auto px-4 py-12">
-        <h2 className="text-2xl font-semibold mb-6">Published Designs</h2>
-        {loading ? (
-          <p className="text-muted-foreground">Loading...</p>
-        ) : products.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">
-            <p className="text-lg mb-2">No designs published yet.</p>
-            <p>Be the first to <Link to="/designer" className="text-primary underline">create a design</Link>!</p>
+      {/* Featured Products */}
+      {!loading && products.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 pb-16">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl font-bold tracking-tight">Available Products</h2>
+            <Link to="/marketplace" className="text-sm text-primary font-medium inline-flex items-center hover:underline">
+              View All <ChevronRight className="w-4 h-4 ml-1" />
+            </Link>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.map(p => (
-              <ProductCard key={p.id} product={p} />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {products.slice(0, 4).map(p => (
+              <Link
+                key={p.id}
+                to="/marketplace"
+                className="group border border-border rounded-xl overflow-hidden bg-card hover:shadow-md transition-shadow"
+              >
+                <div className="aspect-square flex items-center justify-center bg-muted">
+                  {p.image_url ? (
+                    <img src={p.image_url} alt={p.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform" />
+                  ) : (
+                    <span className="text-5xl">👕</span>
+                  )}
+                </div>
+                <div className="p-3">
+                  <h3 className="font-semibold text-sm truncate">{p.name}</h3>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-sm font-bold">From ${Number(p.base_price).toFixed(2)}</span>
+                    <div className="flex gap-0.5">
+                      {p.colors.slice(0, 4).map((c, i) => (
+                        <div key={i} className="w-3 h-3 rounded-full border border-border" style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </Link>
             ))}
           </div>
-        )}
+        </section>
+      )}
+
+      {/* How It Works */}
+      <section className="bg-accent/50 py-16">
+        <div className="max-w-7xl mx-auto px-4">
+          <h2 className="text-2xl font-bold text-center mb-10 tracking-tight">How It Works</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { step: '1', icon: '👕', title: 'Pick a Garment', desc: 'Choose from vendor-listed blank garments — t-shirts, hoodies, and more.' },
+              { step: '2', icon: '🎨', title: 'Upload Your Design', desc: 'Use our design studio to add your artwork, text, or images onto the garment.' },
+              { step: '3', icon: '📦', title: 'We Print & Deliver', desc: 'Place your order and our vendors handle printing and delivery.' },
+            ].map(item => (
+              <div key={item.step} className="text-center space-y-3">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto text-3xl">
+                  {item.icon}
+                </div>
+                <h3 className="font-bold text-lg">{item.title}</h3>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
-    </div>
-  );
-}
 
-function ProductCard({ product }: { product: Product }) {
-  const addItem = useCartStore(s => s.addItem);
-  const { user } = useAuth();
-  const [selectedSize, setSelectedSize] = useState('M');
-
-  return (
-    <div className="border border-border rounded-lg overflow-hidden bg-card hover:shadow-md transition-shadow">
-      <div className="aspect-square flex items-center justify-center overflow-hidden" style={{ backgroundColor: product.garment_color }}>
-        {product.image_url ? (
-          <img src={product.image_url} alt={product.title} className="w-full h-full object-contain" />
-        ) : (
-          <span className="text-4xl">👕</span>
-        )}
-      </div>
-      <div className="p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold truncate flex-1">{product.title}</h3>
-          <Badge variant="secondary" className="text-xs">{product.garment_type}</Badge>
+      {/* Footer */}
+      <footer className="border-t border-border py-8">
+        <div className="max-w-7xl mx-auto px-4 text-center text-sm text-muted-foreground">
+          <p>© {new Date().getFullYear()} Custom Wear Studio. Design your imagination.</p>
         </div>
-        {product.description && <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>}
-        
-        <div className="flex gap-1">
-          {SIZES.map(s => (
-            <button
-              key={s}
-              className={`px-2 py-0.5 text-xs rounded border transition-colors ${
-                selectedSize === s
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'border-border text-muted-foreground hover:border-foreground'
-              }`}
-              onClick={() => setSelectedSize(s)}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className="font-bold text-lg">${Number(product.price).toFixed(2)}</span>
-          <Button size="sm" onClick={() => {
-            if (!user) { window.location.href = '/login'; return; }
-            addItem({ productId: product.id, title: product.title, price: Number(product.price), quantity: 1, size: selectedSize, garmentColor: product.garment_color });
-          }}>
-            <ShoppingCart className="w-4 h-4 mr-1" />Add
-          </Button>
-        </div>
-      </div>
+      </footer>
     </div>
   );
 }
