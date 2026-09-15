@@ -6,6 +6,9 @@ interface HistoryEntry {
   elements: DesignElement[];
 }
 
+export type GarmentStyle = 'regular' | 'oversized' | 'longsleeve' | 'hoodie';
+export type DesignerLayout = 'split' | 'design' | 'mockup';
+
 export interface SelectedProduct {
   id: string;
   name: string;
@@ -21,6 +24,9 @@ interface DesignerState {
   selectedElementId: string | null;
   zoom: number;
   mode: 'edit' | 'preview';
+  layout: DesignerLayout;
+  garmentStyle: GarmentStyle;
+  autoRotate: boolean;
   garmentColor: string;
   activeTool: string | null;
   history: HistoryEntry[];
@@ -36,6 +42,9 @@ interface DesignerState {
   selectElement: (id: string | null) => void;
   setZoom: (zoom: number) => void;
   setMode: (mode: 'edit' | 'preview') => void;
+  setLayout: (layout: DesignerLayout) => void;
+  setGarmentStyle: (style: GarmentStyle) => void;
+  setAutoRotate: (on: boolean) => void;
   setGarmentColor: (color: string) => void;
   setActiveTool: (tool: string | null) => void;
   setSelectedProduct: (product: SelectedProduct | null) => void;
