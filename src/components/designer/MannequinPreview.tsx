@@ -1,286 +1,256 @@
-import { Suspense, useMemo, useEffect, useState, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment } from '@react-three/drei';
+import { useMemo, useRef } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useDesignerStore } from '@/store/designerStore';
+import { GarmentStyle } from '@/store/designerStore';
+import { DesignTextures } from '@/lib/designTexture';
 
 /**
- * Realistic mannequin: human-like body (skin) wearing a t-shirt with the user's design.
- * Includes torso, neck, head silhouette, and arms beneath the garment.
+ * Ghost-mannequin garment scene. Rendered inside the Canvas owned by MockupPanel.
  */
 
-// Skin-toned body underneath
-function HumanBody() {
+export interface GarmentProfile {
+  bodyWidth: number;
+  bodyLength: number;
+  depth: number;
+  sleeveLength: number;
+  sleeveDepth: number;
+  hood: boolean;
+}
+
+export const GARMENT_PROFILES: Record<GarmentStyle, GarmentProfile> = {
+  regular: { bodyWidth: 0.52, bodyLength: 0.7, depth: 0.55, sleeveLength: 0.48, sleeveDepth: 0.38, hood: false },
+  oversized: { bodyWidth: 0.62, bodyLength: 0.82, depth: 0.66, sleeveLength: 0.62, sleeveDepth: 0.46, hood: false },
+  longsleeve: { bodyWidth: 0.54, bodyLength: 0.74, depth: 0.56, sleeveLength: 0.95, sleeveDepth: 0.34, hood: false },
+  hoodie: { bodyWidth: 0.64, bodyLength: 0.8, depth: 0.72, sleeveLength: 0.95, sleeveDepth: 0.42, hood: true },
+};
+
+export const GARMENT_STYLE_OPTIONS: { id: GarmentStyle; label: string }[] = [
+  { id: 'regular', label: 'Regular Tee' },
+  { id: 'oversized', label: 'Oversized Tee' },
+  { id: 'longsleeve', label: 'Long Sleeve' },
+  { id: 'hoodie', label: 'Hoodie' },
+];
+
+function HumanBody({ profile }: { profile: GarmentProfile }) {
   const skinMat = useMemo(
-    () => new THREE.MeshPhysicalMaterial({
-      color: '#d4a574',
-      roughness: 0.7,
-      metalness: 0.0,
-      clearcoat: 0.1,
-    }),
+    () => new THREE.MeshPhysicalMaterial({ color: '#d8b294', roughness: 0.75, metalness: 0, clearcoat: 0.08 }),
     []
   );
 
-  // Torso - elongated sphere
   const torsoGeo = useMemo(() => {
-    const geo = new THREE.CapsuleGeometry(0.38, 0.9, 12, 24);
+    const geo = new THREE.CapsuleGeometry(profile.bodyWidth * 0.72, profile.bodyLength * 1.25, 12, 24);
     geo.scale(1, 1, 0.75);
     return geo;
-  }, []);
+  }, [profile]);
 
-  // Neck
-  const neckGeo = useMemo(() => new THREE.CylinderGeometry(0.1, 0.12, 0.2, 16), []);
-
-  // Head - sphere
+  const neckGeo = useMemo(() => new THREE.CylinderGeometry(0.1, 0.12, 0.22, 16), []);
   const headGeo = useMemo(() => {
     const geo = new THREE.SphereGeometry(0.18, 24, 24);
-    geo.scale(1, 1.1, 0.95);
+    geo.scale(1, 1.12, 0.95);
     return geo;
   }, []);
+  const armGeo = useMemo(() => new THREE.CapsuleGeometry(0.085, 0.62, 8, 12), []);
 
-  // Upper arm
-  const upperArmGeo = useMemo(() => new THREE.CapsuleGeometry(0.09, 0.35, 8, 12), []);
-  // Forearm
-  const forearmGeo = useMemo(() => new THREE.CapsuleGeometry(0.07, 0.32, 8, 12), []);
+  const armX = profile.bodyWidth + 0.02;
 
   return (
     <group>
-      {/* Torso */}
       <mesh geometry={torsoGeo} material={skinMat} position={[0, -0.15, 0]} />
-
-      {/* Neck */}
-      <mesh geometry={neckGeo} material={skinMat} position={[0, 0.65, 0]} />
-
-      {/* Head */}
-      <mesh geometry={headGeo} material={skinMat} position={[0, 0.88, 0]} />
-
-      {/* Left arm */}
-      <group position={[-0.48, 0.25, 0]}>
-        <mesh geometry={upperArmGeo} material={skinMat} rotation={[0, 0, 0.2]} position={[-0.12, -0.05, 0]} />
-        <mesh geometry={forearmGeo} material={skinMat} rotation={[0, 0, 0.15]} position={[-0.22, -0.45, 0]} />
-      </group>
-
-      {/* Right arm */}
-      <group position={[0.48, 0.25, 0]}>
-        <mesh geometry={upperArmGeo} material={skinMat} rotation={[0, 0, -0.2]} position={[0.12, -0.05, 0]} />
-        <mesh geometry={forearmGeo} material={skinMat} rotation={[0, 0, -0.15]} position={[0.22, -0.45, 0]} />
-      </group>
+      <mesh geometry={neckGeo} material={skinMat} position={[0, 0.66, 0]} />
+      <mesh geometry={headGeo} material={skinMat} position={[0, 0.9, 0]} />
+      <mesh geometry={armGeo} material={skinMat} position={[-armX, -0.16, 0]} rotation={[0, 0, 0.12]} />
+      <mesh geometry={armGeo} material={skinMat} position={[armX, -0.16, 0]} rotation={[0, 0, -0.12]} />
     </group>
   );
 }
 
-// T-shirt garment layered on body
-function TShirtGarment({ color, designTexture }: { color: string; designTexture: THREE.Texture | null }) {
-  const garmentMat = useMemo(
-    () => new THREE.MeshPhysicalMaterial({
-      color,
-      roughness: 0.88,
-      metalness: 0.0,
-      clearcoat: 0.03,
-      side: THREE.FrontSide,
-    }),
+function Garment({
+  color,
+  profile,
+  textures,
+}: {
+  color: string;
+  profile: GarmentProfile;
+  textures: DesignTextures;
+}) {
+  const mat = useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        color,
+        roughness: 0.9,
+        metalness: 0,
+        sheen: 0.5,
+        sheenRoughness: 0.9,
+        clearcoat: 0.02,
+        side: THREE.DoubleSide,
+      }),
     [color]
   );
 
-  // Main torso shell - slightly larger than body
-  const torsoGeo = useMemo(() => {
+  const bodyGeo = useMemo(() => {
+    const w = profile.bodyWidth;
+    const l = profile.bodyLength;
     const shape = new THREE.Shape();
-    // Bottom hem
-    shape.moveTo(-0.48, -0.7);
-    // Left side with slight waist curve
-    shape.quadraticCurveTo(-0.5, -0.2, -0.52, 0.1);
-    // Left shoulder area widening
-    shape.quadraticCurveTo(-0.54, 0.35, -0.5, 0.45);
-    // Left shoulder top
-    shape.lineTo(-0.42, 0.52);
-    // Neckline curve
-    shape.quadraticCurveTo(-0.2, 0.58, 0, 0.5);
-    shape.quadraticCurveTo(0.2, 0.58, 0.42, 0.52);
-    // Right shoulder
-    shape.lineTo(0.5, 0.45);
-    shape.quadraticCurveTo(0.54, 0.35, 0.52, 0.1);
-    // Right side
-    shape.quadraticCurveTo(0.5, -0.2, 0.48, -0.7);
-    // Bottom close
-    shape.quadraticCurveTo(0, -0.73, -0.48, -0.7);
+    shape.moveTo(-w * 0.94, -l);
+    shape.quadraticCurveTo(-w * 0.98, -l * 0.3, -w, l * 0.14);
+    shape.quadraticCurveTo(-w * 1.04, l * 0.5, -w * 0.96, l * 0.64);
+    shape.lineTo(-w * 0.8, l * 0.74);
+    shape.quadraticCurveTo(-w * 0.38, l * 0.84, 0, l * 0.71);
+    shape.quadraticCurveTo(w * 0.38, l * 0.84, w * 0.8, l * 0.74);
+    shape.lineTo(w * 0.96, l * 0.64);
+    shape.quadraticCurveTo(w * 1.04, l * 0.5, w, l * 0.14);
+    shape.quadraticCurveTo(w * 0.98, -l * 0.3, w * 0.94, -l);
+    shape.quadraticCurveTo(0, -l * 1.04, -w * 0.94, -l);
 
     return new THREE.ExtrudeGeometry(shape, {
-      depth: 0.55,
+      depth: profile.depth,
       bevelEnabled: true,
-      bevelThickness: 0.04,
-      bevelSize: 0.03,
-      bevelSegments: 5,
+      bevelThickness: 0.05,
+      bevelSize: 0.04,
+      bevelSegments: 6,
+      curveSegments: 24,
     });
-  }, []);
+  }, [profile]);
 
-  // Sleeve geometry
   const sleeveGeo = useMemo(() => {
+    const len = profile.sleeveLength;
     const shape = new THREE.Shape();
-    shape.moveTo(0, 0.12);
-    shape.quadraticCurveTo(0.08, 0.14, 0.32, 0.05);
-    shape.quadraticCurveTo(0.42, 0.0, 0.48, -0.18);
-    shape.lineTo(0.45, -0.28);
-    shape.quadraticCurveTo(0.38, -0.22, 0.25, -0.15);
-    shape.quadraticCurveTo(0.1, -0.08, 0, -0.1);
-    shape.lineTo(0, 0.12);
+    shape.moveTo(0, 0.14);
+    shape.quadraticCurveTo(len * 0.35, 0.12, len * 0.78, 0.02);
+    shape.quadraticCurveTo(len * 0.95, -0.04, len, -0.22);
+    shape.lineTo(len * 0.9, -0.34);
+    shape.quadraticCurveTo(len * 0.6, -0.24, len * 0.4, -0.16);
+    shape.quadraticCurveTo(len * 0.18, -0.1, 0, -0.12);
+    shape.lineTo(0, 0.14);
 
     return new THREE.ExtrudeGeometry(shape, {
-      depth: 0.38,
+      depth: profile.sleeveDepth,
       bevelEnabled: true,
-      bevelThickness: 0.03,
-      bevelSize: 0.02,
-      bevelSegments: 3,
+      bevelThickness: 0.035,
+      bevelSize: 0.028,
+      bevelSegments: 4,
+      curveSegments: 18,
     });
-  }, []);
+  }, [profile]);
 
-  // Collar ring
   const collarGeo = useMemo(() => {
     const shape = new THREE.Shape();
-    shape.absellipse(0, 0, 0.2, 0.12, 0, Math.PI * 2, false, 0);
+    shape.absellipse(0, 0, 0.23, 0.14, 0, Math.PI * 2, false, 0);
     const hole = new THREE.Path();
-    hole.absellipse(0, 0, 0.17, 0.1, 0, Math.PI * 2, false, 0);
+    hole.absellipse(0, 0, 0.19, 0.11, 0, Math.PI * 2, false, 0);
     shape.holes.push(hole);
     return new THREE.ExtrudeGeometry(shape, {
-      depth: 0.05,
+      depth: 0.06,
       bevelEnabled: true,
-      bevelThickness: 0.01,
-      bevelSize: 0.008,
+      bevelThickness: 0.012,
+      bevelSize: 0.01,
       bevelSegments: 2,
+      curveSegments: 20,
     });
   }, []);
+
+  const hoodGeo = useMemo(() => {
+    const geo = new THREE.SphereGeometry(0.34, 24, 20, 0, Math.PI * 2, 0, Math.PI * 0.62);
+    geo.scale(1.05, 1, 0.9);
+    return geo;
+  }, []);
+
+  const half = profile.depth / 2;
+  const printW = profile.bodyWidth * 1.35;
+  const printH = printW * 1.3;
+  const printY = -profile.bodyLength * 0.2;
 
   return (
     <group>
-      {/* Main torso shell */}
-      <mesh geometry={torsoGeo} material={garmentMat} position={[0, -0.1, -0.275]} />
+      <mesh geometry={bodyGeo} material={mat} position={[0, -0.06, -half]} castShadow receiveShadow />
 
-      {/* Left sleeve */}
-      <mesh geometry={sleeveGeo} material={garmentMat} position={[-0.48, 0.22, -0.19]} rotation={[0, 0, 0.1]} />
+      <mesh
+        geometry={sleeveGeo}
+        material={mat}
+        position={[-profile.bodyWidth * 0.94, profile.bodyLength * 0.36, -profile.sleeveDepth / 2]}
+        rotation={[0, 0, Math.PI - 0.15]}
+        scale={[1, 1, 1]}
+      />
+      <mesh
+        geometry={sleeveGeo}
+        material={mat}
+        position={[profile.bodyWidth * 0.94, profile.bodyLength * 0.36, -profile.sleeveDepth / 2]}
+        rotation={[0, 0, -0.15]}
+      />
 
-      {/* Right sleeve (mirrored) */}
-      <group position={[0.48, 0.22, 0.19]} rotation={[0, Math.PI, -0.1]}>
-        <mesh geometry={sleeveGeo} material={garmentMat} />
-      </group>
+      <mesh geometry={collarGeo} material={mat} position={[0, profile.bodyLength * 0.66, 0]} rotation={[Math.PI / 2, 0, 0]} />
 
-      {/* Collar */}
-      <mesh geometry={collarGeo} material={garmentMat} position={[0, 0.52, 0]} rotation={[Math.PI / 2, 0, 0]} />
+      {profile.hood && (
+        <mesh
+          geometry={hoodGeo}
+          material={mat}
+          position={[0, profile.bodyLength * 0.64, -0.12]}
+          rotation={[-0.5, 0, 0]}
+        />
+      )}
 
-      {/* Design overlay on front */}
-      {designTexture && (
-        <mesh position={[0, -0.12, 0.31]}>
-          <planeGeometry args={[0.7, 0.9]} />
-          <meshBasicMaterial map={designTexture} transparent depthWrite={false} polygonOffset polygonOffsetFactor={-1} />
+      {textures.front && (
+        <mesh position={[0, printY, half + 0.012]}>
+          <planeGeometry args={[printW, printH]} />
+          <meshBasicMaterial map={textures.front} transparent depthWrite={false} polygonOffset polygonOffsetFactor={-2} />
+        </mesh>
+      )}
+
+      {textures.back && (
+        <mesh position={[0, printY, -half - 0.012]} rotation={[0, Math.PI, 0]}>
+          <planeGeometry args={[printW, printH]} />
+          <meshBasicMaterial map={textures.back} transparent depthWrite={false} polygonOffset polygonOffsetFactor={-2} />
         </mesh>
       )}
     </group>
   );
 }
 
-function FullMannequin({ color, designTexture }: { color: string; designTexture: THREE.Texture | null }) {
-  const groupRef = useRef<THREE.Group>(null);
+export interface MockupSceneProps {
+  color: string;
+  style: GarmentStyle;
+  textures: DesignTextures;
+  autoRotate: boolean;
+  /** Increment to request a camera move; angle is in radians around Y. */
+  viewRequest: { angle: number; token: number } | null;
+}
 
-  useFrame((_, delta) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.15;
+export default function MockupScene({ color, style, textures, autoRotate, viewRequest }: MockupSceneProps) {
+  const groupRef = useRef<THREE.Group>(null);
+  const targetY = useRef<number | null>(null);
+  const lastToken = useRef(0);
+  const profile = GARMENT_PROFILES[style];
+  const { camera } = useThree();
+
+  if (viewRequest && viewRequest.token !== lastToken.current) {
+    lastToken.current = viewRequest.token;
+    targetY.current = viewRequest.angle;
+  }
+
+  useFrame((_, rawDelta) => {
+    const delta = Math.min(rawDelta, 0.05);
+    const g = groupRef.current;
+    if (!g) return;
+
+    if (targetY.current !== null) {
+      const diff = targetY.current - g.rotation.y;
+      if (Math.abs(diff) < 0.01) {
+        g.rotation.y = targetY.current;
+        targetY.current = null;
+      } else {
+        g.rotation.y += diff * (1 - Math.exp(-8 * delta));
+      }
+      return;
     }
+
+    if (autoRotate) g.rotation.y += delta * 0.35;
+    camera.updateProjectionMatrix();
   });
 
   return (
-    <group ref={groupRef} position={[0, -0.2, 0]}>
-      <HumanBody />
-      <TShirtGarment color={color} designTexture={designTexture} />
+    <group ref={groupRef} position={[0, -0.15, 0]}>
+      <HumanBody profile={profile} />
+      <Garment color={color} profile={profile} textures={textures} />
     </group>
-  );
-}
-
-function useDesignTexture() {
-  const { elements } = useDesignerStore();
-  const [imageLoadKey, setImageLoadKey] = useState(0);
-
-  useEffect(() => {
-    const imageElements = elements.filter(el => el.type === 'image' && el.view === 'front');
-    if (imageElements.length === 0) return;
-    let loaded = 0;
-    imageElements.forEach(el => {
-      const img = new window.Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        loaded++;
-        if (loaded === imageElements.length) setImageLoadKey(k => k + 1);
-      };
-      img.src = el.content;
-    });
-  }, [elements]);
-
-  return useMemo(() => {
-    const frontElements = elements.filter(el => el.view === 'front');
-    if (frontElements.length === 0) return null;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 614;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    ctx.clearRect(0, 0, 512, 614);
-
-    for (const el of frontElements) {
-      const sx = (el.x / 200) * 512;
-      const sy = (el.y / 290) * 614;
-      const sw = (el.width / 200) * 512;
-      const sh = (el.height / 290) * 614;
-      ctx.save();
-      ctx.globalAlpha = el.opacity ?? 1;
-
-      if (el.type === 'text') {
-        ctx.fillStyle = el.color || '#000';
-        const fontSize = Math.round(((el.fontSize || 24) / 200) * 512);
-        ctx.font = `${el.fontWeight || 'normal'} ${el.fontStyle || 'normal'} ${fontSize}px ${el.fontFamily || 'Arial'}`;
-        ctx.textAlign = (el.textAlign as CanvasTextAlign) || 'left';
-        const textX = el.textAlign === 'center' ? sx + sw / 2 : el.textAlign === 'right' ? sx + sw : sx;
-        ctx.fillText(el.content, textX, sy + fontSize);
-      } else if (el.type === 'shape') {
-        ctx.fillStyle = el.fill || '#000';
-        if (el.shapeType === 'rectangle') ctx.fillRect(sx, sy, sw, sh);
-        else if (el.shapeType === 'circle') {
-          ctx.beginPath();
-          ctx.ellipse(sx + sw / 2, sy + sh / 2, sw / 2, sh / 2, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      } else if (el.type === 'image' && el.content) {
-        const img = new window.Image();
-        img.crossOrigin = 'anonymous';
-        img.src = el.content;
-        if (img.complete && img.naturalWidth > 0) {
-          ctx.drawImage(img, sx, sy, sw, sh);
-        }
-      }
-      ctx.restore();
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-    return texture;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [elements, imageLoadKey]);
-}
-
-export default function MannequinPreview() {
-  const { garmentColor } = useDesignerStore();
-  const designTexture = useDesignTexture();
-
-  return (
-    <div className="w-full h-full bg-gradient-to-b from-muted to-muted/50 rounded-lg overflow-hidden">
-      <Canvas camera={{ position: [0, 0.3, 3.2], fov: 32 }} gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}>
-        <Suspense fallback={null}>
-          <ambientLight intensity={0.55} />
-          <directionalLight position={[3, 5, 5]} intensity={1.0} castShadow />
-          <directionalLight position={[-3, 3, -2]} intensity={0.3} />
-          <directionalLight position={[0, -2, 3]} intensity={0.15} />
-          <FullMannequin color={garmentColor} designTexture={designTexture} />
-          <OrbitControls enableZoom enablePan={false} minPolarAngle={Math.PI / 4} maxPolarAngle={Math.PI / 1.5} minDistance={2} maxDistance={5} />
-          <Environment preset="studio" />
-        </Suspense>
-      </Canvas>
-    </div>
   );
 }

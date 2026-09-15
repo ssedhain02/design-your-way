@@ -6,6 +6,9 @@ interface HistoryEntry {
   elements: DesignElement[];
 }
 
+export type GarmentStyle = 'regular' | 'oversized' | 'longsleeve' | 'hoodie';
+export type DesignerLayout = 'split' | 'design' | 'mockup';
+
 export interface SelectedProduct {
   id: string;
   name: string;
@@ -21,6 +24,9 @@ interface DesignerState {
   selectedElementId: string | null;
   zoom: number;
   mode: 'edit' | 'preview';
+  layout: DesignerLayout;
+  garmentStyle: GarmentStyle;
+  autoRotate: boolean;
   garmentColor: string;
   activeTool: string | null;
   history: HistoryEntry[];
@@ -36,6 +42,9 @@ interface DesignerState {
   selectElement: (id: string | null) => void;
   setZoom: (zoom: number) => void;
   setMode: (mode: 'edit' | 'preview') => void;
+  setLayout: (layout: DesignerLayout) => void;
+  setGarmentStyle: (style: GarmentStyle) => void;
+  setAutoRotate: (on: boolean) => void;
   setGarmentColor: (color: string) => void;
   setActiveTool: (tool: string | null) => void;
   setSelectedProduct: (product: SelectedProduct | null) => void;
@@ -63,6 +72,9 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   selectedElementId: null,
   zoom: 100,
   mode: 'edit',
+  layout: 'split',
+  garmentStyle: 'regular',
+  autoRotate: true,
   garmentColor: '#ffffff',
   activeTool: null,
   history: [{ elements: [] }],
@@ -102,7 +114,10 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   selectElement: (id) => set({ selectedElementId: id }),
   setZoom: (zoom) => set({ zoom: Math.max(10, Math.min(200, zoom)) }),
-  setMode: (mode) => set({ mode }),
+  setMode: (mode) => set({ mode, layout: mode === 'preview' ? 'mockup' : 'design' }),
+  setLayout: (layout) => set({ layout, mode: layout === 'mockup' ? 'preview' : 'edit' }),
+  setGarmentStyle: (garmentStyle) => set({ garmentStyle }),
+  setAutoRotate: (autoRotate) => set({ autoRotate }),
   setGarmentColor: (color) => set({ garmentColor: color }),
   setActiveTool: (tool) => set((s) => ({ activeTool: s.activeTool === tool ? null : tool })),
 
