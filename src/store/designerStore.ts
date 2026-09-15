@@ -114,7 +114,10 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   selectElement: (id) => set({ selectedElementId: id }),
   setZoom: (zoom) => set({ zoom: Math.max(10, Math.min(200, zoom)) }),
-  setMode: (mode) => set({ mode }),
+  setMode: (mode) => set({ mode, layout: mode === 'preview' ? 'mockup' : 'design' }),
+  setLayout: (layout) => set({ layout, mode: layout === 'mockup' ? 'preview' : 'edit' }),
+  setGarmentStyle: (garmentStyle) => set({ garmentStyle }),
+  setAutoRotate: (autoRotate) => set({ autoRotate }),
   setGarmentColor: (color) => set({ garmentColor: color }),
   setActiveTool: (tool) => set((s) => ({ activeTool: s.activeTool === tool ? null : tool })),
 
