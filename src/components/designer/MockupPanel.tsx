@@ -11,11 +11,12 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 function CameraDistance({ distance }: { distance: number }) {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   useEffect(() => {
-    camera.position.set(0, 0.25, distance);
+    const portraitAdjustment = Math.max(1, 0.82 / Math.max(size.width / size.height, 0.3));
+    camera.position.set(0, 0.1, distance * portraitAdjustment);
     camera.updateProjectionMatrix();
-  }, [camera, distance]);
+  }, [camera, distance, size.height, size.width]);
   return null;
 }
 
@@ -31,7 +32,7 @@ export default function MockupPanel({ className }: { className?: string }) {
   const textures = useDesignTextures(elements);
 
   const [viewRequest, setViewRequest] = useState<{ angle: number; token: number } | null>(null);
-  const [distance, setDistance] = useState(3.2);
+  const [distance, setDistance] = useState(4.8);
   const [fullscreen, setFullscreen] = useState(false);
 
   const requestView = (angle: number) => {
@@ -40,7 +41,7 @@ export default function MockupPanel({ className }: { className?: string }) {
   };
 
   const reset = () => {
-    setDistance(3.2);
+    setDistance(4.8);
     requestView(0);
   };
 
@@ -82,7 +83,7 @@ export default function MockupPanel({ className }: { className?: string }) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setDistance((d) => Math.max(2, d - 0.35))}
+            onClick={() => setDistance((d) => Math.max(3.2, d - 0.4))}
             className="h-7 w-7 text-muted-foreground"
             title="Zoom in"
             aria-label="Zoom in"
@@ -92,7 +93,7 @@ export default function MockupPanel({ className }: { className?: string }) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setDistance((d) => Math.min(5.5, d + 0.35))}
+            onClick={() => setDistance((d) => Math.min(7.5, d + 0.4))}
             className="h-7 w-7 text-muted-foreground"
             title="Zoom out"
             aria-label="Zoom out"
@@ -131,7 +132,7 @@ export default function MockupPanel({ className }: { className?: string }) {
 
       <div className="flex-1 min-h-0">
         <Canvas
-          camera={{ position: [0, 0.25, distance], fov: 32 }}
+          camera={{ position: [0, 0.1, distance], fov: 36 }}
           gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
           shadows
         >
@@ -163,8 +164,8 @@ export default function MockupPanel({ className }: { className?: string }) {
               enablePan={false}
               minPolarAngle={Math.PI / 4}
               maxPolarAngle={Math.PI / 1.6}
-              minDistance={2}
-              maxDistance={5.5}
+              minDistance={3.2}
+              maxDistance={10}
               onStart={() => setAutoRotate(false)}
             />
           </Suspense>
