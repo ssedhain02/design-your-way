@@ -1,5 +1,5 @@
-import { Suspense, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Suspense, useEffect, useState } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Environment, Lightformer, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import { Maximize2, Minimize2, RotateCw, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
@@ -8,6 +8,16 @@ import { useDesignerStore } from '@/store/designerStore';
 import { useDesignTextures } from '@/lib/designTexture';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+
+function CameraDistance({ distance }: { distance: number }) {
+  const { camera } = useThree();
+  useEffect(() => {
+    camera.position.set(0, 0.25, distance);
+    camera.updateProjectionMatrix();
+  }, [camera, distance]);
+  return null;
+}
 
 const VIEW_ANGLES: { label: string; angle: number }[] = [
   { label: 'Front', angle: 0 },
@@ -45,13 +55,15 @@ export default function MockupPanel({ className }: { className?: string }) {
       <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border bg-background/80 flex-wrap">
         <div className="flex items-center gap-1">
           {VIEW_ANGLES.map((v) => (
-            <button
+            <Button
               key={v.label}
+              variant="outline"
+              size="sm"
               onClick={() => requestView(v.angle)}
-              className="px-2.5 py-1 text-xs rounded-full border border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              className="h-7 px-2.5 text-xs text-muted-foreground"
             >
               {v.label}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -67,51 +79,64 @@ export default function MockupPanel({ className }: { className?: string }) {
             </SelectContent>
           </Select>
 
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setDistance((d) => Math.max(2, d - 0.35))}
-            className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="h-7 w-7 text-muted-foreground"
             title="Zoom in"
+            aria-label="Zoom in"
           >
             <ZoomIn className="w-4 h-4" />
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setDistance((d) => Math.min(5.5, d + 0.35))}
-            className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="h-7 w-7 text-muted-foreground"
             title="Zoom out"
+            aria-label="Zoom out"
           >
             <ZoomOut className="w-4 h-4" />
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setAutoRotate(!autoRotate)}
             className={cn(
-              'p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground',
+              'h-7 w-7 text-muted-foreground',
               autoRotate && 'bg-accent text-foreground'
             )}
             title="Auto-rotate"
+            aria-label="Toggle auto-rotate"
+            aria-pressed={autoRotate}
           >
             <RotateCw className="w-4 h-4" />
-          </button>
-          <button onClick={reset} className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" title="Reset view">
+          </Button>
+          <Button variant="ghost" size="icon" onClick={reset} className="h-7 w-7 text-muted-foreground" title="Reset view" aria-label="Reset view">
             <RefreshCw className="w-4 h-4" />
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setFullscreen((f) => !f)}
-            className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="h-7 w-7 text-muted-foreground"
             title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            aria-label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
           >
             {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="flex-1 min-h-0">
         <Canvas
-          key={fullscreen ? 'fs' : 'inline'}
           camera={{ position: [0, 0.25, distance], fov: 32 }}
           gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
           shadows
         >
           <Suspense fallback={null}>
+            <CameraDistance distance={distance} />
             <ambientLight intensity={0.5} />
             <directionalLight position={[3, 5, 5]} intensity={1.1} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
             <directionalLight position={[-3, 3, -2]} intensity={0.35} />
