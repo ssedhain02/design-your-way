@@ -13,6 +13,7 @@ const DESIGN_BOUNDS: Record<GarmentView, { x: number; y: number; w: number; h: n
 };
 
 export default function DesignCanvas() {
+  const viewportRef = useRef<HTMLDivElement>(null);
   const {
     activeView, elements, selectedElementId, selectElement, zoom, mode, garmentColor,
     updateElement, removeElement, undo, redo, duplicateElement, copyElement, pasteElement,
@@ -24,10 +25,31 @@ export default function DesignCanvas() {
     origX: number; origY: number; origW: number; origH: number;
   } | null>(null);
   const [showCenterGuides, setShowCenterGuides] = useState<{ h: boolean; v: boolean }>({ h: false, v: false });
+  const [fitScale, setFitScale] = useState(1);
 
   const viewElements = elements.filter((el) => el.view === activeView);
   const bounds = DESIGN_BOUNDS[activeView];
-  const scale = zoom / 100;
+  const scale = fitScale * (zoom / 100);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const updateFit = () => {
+      const padding = 24;
+      const nextScale = Math.min(
+        1,
+        Math.max(0.2, (viewport.clientWidth - padding) / 500),
+        Math.max(0.2, (viewport.clientHeight - padding) / 580)
+      );
+      setFitScale(nextScale);
+    };
+
+    updateFit();
+    const observer = new ResizeObserver(updateFit);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -157,6 +179,7 @@ export default function DesignCanvas() {
 
   return (
     <div
+      ref={viewportRef}
       className="flex-1 flex items-center justify-center bg-canvas overflow-hidden relative"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

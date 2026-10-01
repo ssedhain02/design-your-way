@@ -156,6 +156,7 @@ function Garment({
   }, []);
 
   const half = profile.depth / 2;
+  const printSurfaceOffset = half + 0.075;
   const printW = profile.bodyWidth * 1.35;
   const printH = printW * 1.3;
   const printY = -profile.bodyLength * 0.2;
@@ -190,16 +191,16 @@ function Garment({
       )}
 
       {textures.front && (
-        <mesh position={[0, printY, half + 0.012]}>
+        <mesh position={[0, printY, printSurfaceOffset]} renderOrder={2}>
           <planeGeometry args={[printW, printH]} />
-          <meshBasicMaterial map={textures.front} transparent depthWrite={false} polygonOffset polygonOffsetFactor={-2} />
+          <meshBasicMaterial map={textures.front} transparent depthWrite={false} depthTest polygonOffset polygonOffsetFactor={-4} />
         </mesh>
       )}
 
       {textures.back && (
-        <mesh position={[0, printY, -half - 0.012]} rotation={[0, Math.PI, 0]}>
+        <mesh position={[0, printY, -printSurfaceOffset]} rotation={[0, Math.PI, 0]} renderOrder={2}>
           <planeGeometry args={[printW, printH]} />
-          <meshBasicMaterial map={textures.back} transparent depthWrite={false} polygonOffset polygonOffsetFactor={-2} />
+          <meshBasicMaterial map={textures.back} transparent depthWrite={false} depthTest polygonOffset polygonOffsetFactor={-4} />
         </mesh>
       )}
     </group>

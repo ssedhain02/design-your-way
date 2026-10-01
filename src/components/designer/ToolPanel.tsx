@@ -28,9 +28,11 @@ export default function ToolPanel() {
     const img = new Image();
     img.onload = () => {
       const maxW = 160;
+      const maxH = 260;
       const ratio = img.height / img.width;
+      const width = Math.min(maxW, maxH / ratio);
       addElement({
-        id: uuidv4(), type: 'image', x: 10, y: 10, width: maxW, height: maxW * ratio,
+        id: uuidv4(), type: 'image', x: 10, y: 10, width, height: width * ratio,
         rotation: 0, content: url, view: activeView, opacity: 100, visible: true, name: file.name,
       });
       setActiveTool(null);
