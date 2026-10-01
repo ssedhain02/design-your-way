@@ -17,10 +17,14 @@ const imageCache = new Map<string, HTMLImageElement>();
 
 function getImage(src: string, onLoad: () => void): HTMLImageElement {
   const cached = imageCache.get(src);
-  if (cached) return cached;
+  if (cached) {
+    if (!cached.complete || cached.naturalWidth === 0) cached.addEventListener('load', onLoad, { once: true });
+    return cached;
+  }
   const img = new window.Image();
-  img.crossOrigin = 'anonymous';
+  if (/^https?:/i.test(src)) img.crossOrigin = 'anonymous';
   img.onload = onLoad;
+  img.onerror = onLoad;
   img.src = src;
   imageCache.set(src, img);
   return img;
