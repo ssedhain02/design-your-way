@@ -1,30 +1,31 @@
 import { Minus, Plus, Hand } from 'lucide-react';
 import { useDesignerStore } from '@/store/designerStore';
+import { Button } from '@/components/ui/button';
 
 export default function ZoomControls() {
   const { zoom, setZoom } = useDesignerStore();
 
   return (
-    <div className="flex items-center gap-1 bg-background border border-border rounded-lg px-2 py-1">
-      <button onClick={() => setZoom(zoom - 10)} className="p-1 rounded hover:bg-accent text-muted-foreground">
+    <div className="flex h-9 items-center gap-0.5 rounded-lg border border-border bg-background px-1 md:gap-1 md:px-2 md:py-1">
+      <Button variant="ghost" size="icon" onClick={() => setZoom(zoom - 10)} className="h-7 w-7 text-muted-foreground" aria-label="Zoom out">
         <Minus className="w-4 h-4" />
-      </button>
+      </Button>
       <select
         value={zoom}
         onChange={(e) => setZoom(Number(e.target.value))}
-        className="text-sm bg-transparent text-foreground w-14 text-center appearance-none cursor-pointer"
+        className="w-12 cursor-pointer appearance-none bg-transparent text-center text-xs text-foreground md:w-14 md:text-sm"
       >
         {[10, 25, 50, 75, 100, 125, 150, 200].map((v) => (
           <option key={v} value={v}>{v}%</option>
         ))}
       </select>
-      <button onClick={() => setZoom(zoom + 10)} className="p-1 rounded hover:bg-accent text-muted-foreground">
+      <Button variant="ghost" size="icon" onClick={() => setZoom(zoom + 10)} className="h-7 w-7 text-muted-foreground" aria-label="Zoom in">
         <Plus className="w-4 h-4" />
-      </button>
-      <div className="w-px h-5 bg-border mx-1" />
-      <button className="p-1 rounded hover:bg-accent text-muted-foreground">
+      </Button>
+      <div className="mx-0.5 h-5 w-px bg-border md:mx-1" />
+      <Button variant="ghost" size="icon" className="hidden h-7 w-7 text-muted-foreground min-[360px]:inline-flex" aria-label="Pan canvas">
         <Hand className="w-4 h-4" />
-      </button>
+      </Button>
     </div>
   );
 }

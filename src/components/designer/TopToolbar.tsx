@@ -13,9 +13,9 @@ export default function TopToolbar() {
   const { layout, setLayout, undo, redo, canUndo, canRedo } = useDesignerStore();
 
   return (
-    <div className="flex items-center justify-between h-12 px-4 border-b border-border bg-background">
+    <div className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-background px-2 md:h-12 md:px-4">
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" title="Info" aria-label="Designer information">
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground md:h-8 md:w-8" title="Info" aria-label="Designer information">
           <Info className="w-4 h-4" />
         </Button>
         <Button
@@ -23,7 +23,7 @@ export default function TopToolbar() {
           size="icon"
           onClick={undo}
           disabled={!canUndo()}
-          className={cn('h-8 w-8 text-muted-foreground', !canUndo() && 'opacity-30 cursor-not-allowed')}
+          className={cn('h-7 w-7 text-muted-foreground md:h-8 md:w-8', !canUndo() && 'opacity-30 cursor-not-allowed')}
           title="Undo (Ctrl+Z)"
           aria-label="Undo"
         >
@@ -34,7 +34,7 @@ export default function TopToolbar() {
           size="icon"
           onClick={redo}
           disabled={!canRedo()}
-          className={cn('h-8 w-8 text-muted-foreground', !canRedo() && 'opacity-30 cursor-not-allowed')}
+          className={cn('h-7 w-7 text-muted-foreground md:h-8 md:w-8', !canRedo() && 'opacity-30 cursor-not-allowed')}
           title="Redo (Ctrl+Shift+Z)"
           aria-label="Redo"
         >
@@ -51,17 +51,17 @@ export default function TopToolbar() {
               size="sm"
               onClick={() => setLayout(id)}
               className={cn(
-                'h-8 rounded px-2.5 text-xs sm:px-3',
+                'h-8 w-9 rounded px-0 text-xs sm:w-auto sm:px-3',
                 layout === id ? 'bg-background text-foreground shadow-sm hover:bg-background' : 'text-muted-foreground'
               )}
               aria-pressed={layout === id}
             >
               <Icon className="h-3.5 w-3.5" />
-              <span className={id === 'split' ? 'hidden sm:inline' : ''}>{label}</span>
+              <span className="hidden sm:inline">{label}</span>
             </Button>
           ))}
         </div>
-        <Button variant="ghost" size="icon" className="ml-1 h-8 w-8 text-muted-foreground" title="Product options" aria-label="Product options">
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground md:ml-1 md:h-8 md:w-8" title="Product options" aria-label="Product options">
           <Scissors className="w-5 h-5" />
         </Button>
       </div>
