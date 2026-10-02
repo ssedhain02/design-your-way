@@ -190,7 +190,7 @@ export default function DesignCanvas() {
       onClick={handleCanvasClick}
     >
       <div
-        className="relative"
+        className="relative shrink-0"
         style={{
           width: 500, height: 580,
           transform: `scale(${scale})`,
