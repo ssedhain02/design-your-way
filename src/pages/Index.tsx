@@ -40,8 +40,11 @@ export default function Index() {
     <div className="flex flex-col h-screen overflow-hidden">
       <TopToolbar />
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        <div className={cn('flex min-w-0', layout === 'mockup' && 'hidden')}>
+      <div className="relative flex flex-1 min-h-0 overflow-hidden">
+        <div className={cn(
+          'pointer-events-none absolute inset-y-0 left-0 z-30 flex min-w-0 md:static md:z-auto',
+          layout === 'mockup' && 'hidden'
+        )}>
           <ToolSidebar />
           <ToolPanel />
         </div>
