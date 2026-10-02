@@ -75,9 +75,10 @@ export default function DesignCanvas() {
     }
   };
 
-  const handleMouseDown = useCallback(
-    (id: string, e: React.MouseEvent) => {
+  const handlePointerDown = useCallback(
+    (id: string, e: React.PointerEvent) => {
       e.stopPropagation();
+      e.currentTarget.setPointerCapture(e.pointerId);
       selectElement(id);
       const el = elements.find((el) => el.id === id);
       if (!el) return;
@@ -87,7 +88,9 @@ export default function DesignCanvas() {
   );
 
   const handleResizeStart = useCallback(
-    (id: string, handle: string, e: React.MouseEvent) => {
+    (id: string, handle: string, e: React.PointerEvent) => {
+      e.stopPropagation();
+      e.currentTarget.setPointerCapture(e.pointerId);
       const el = elements.find((el) => el.id === id);
       if (!el) return;
       setResizing({
@@ -98,8 +101,8 @@ export default function DesignCanvas() {
     [elements]
   );
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
       if (dragging) {
         const dx = (e.clientX - dragging.startX) / scale;
         const dy = (e.clientY - dragging.startY) / scale;
@@ -181,9 +184,9 @@ export default function DesignCanvas() {
     <div
       ref={viewportRef}
       className="flex-1 flex items-center justify-center bg-canvas overflow-hidden relative"
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handleMouseUp}
+      onPointerCancel={handleMouseUp}
       onClick={handleCanvasClick}
     >
       <div
@@ -221,7 +224,7 @@ export default function DesignCanvas() {
         )}
 
         <div
-          className="absolute"
+          className="absolute max-md:overflow-hidden"
           style={{ left: `${bounds.x}%`, top: `${bounds.y}%`, width: `${bounds.w}%`, height: `${bounds.h}%` }}
         >
           {viewElements.map((el) => (
@@ -229,7 +232,7 @@ export default function DesignCanvas() {
               key={el.id}
               element={el}
               isSelected={el.id === selectedElementId}
-              onMouseDown={(e) => handleMouseDown(el.id, e)}
+              onPointerDown={(e) => handlePointerDown(el.id, e)}
               onResize={handleResizeStart}
               isPreview={mode === 'preview'}
             />
