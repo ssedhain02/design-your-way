@@ -5,8 +5,8 @@ import { useState, useCallback } from 'react';
 interface Props {
   element: DesignElement;
   isSelected: boolean;
-  onMouseDown: (e: React.MouseEvent) => void;
-  onResize: (id: string, handle: string, e: React.MouseEvent) => void;
+  onPointerDown: (e: React.PointerEvent) => void;
+  onResize: (id: string, handle: string, e: React.PointerEvent) => void;
   isPreview: boolean;
 }
 
@@ -26,7 +26,7 @@ const HANDLE_POS: Record<string, { top?: string; bottom?: string; left?: string;
   w:  { top: '50%', left: '-4px', transform: 'translateY(-50%)' },
 };
 
-export default function DesignElementComponent({ element, isSelected, onMouseDown, onResize, isPreview }: Props) {
+export default function DesignElementComponent({ element, isSelected, onPointerDown, onResize, isPreview }: Props) {
   const opacity = element.opacity ?? 100;
 
   const renderShape = () => {
@@ -53,7 +53,7 @@ export default function DesignElementComponent({ element, isSelected, onMouseDow
 
   return (
     <div
-      className={cn('design-element absolute group', isSelected && !isPreview && 'selected')}
+      className={cn('design-element absolute group touch-none', isSelected && !isPreview && 'selected')}
       style={{
         left: element.x,
         top: element.y,
@@ -65,7 +65,7 @@ export default function DesignElementComponent({ element, isSelected, onMouseDow
         pointerEvents: element.visible === false ? 'none' : 'auto',
         display: element.visible === false && !isPreview ? 'block' : element.visible === false ? 'none' : 'block',
       }}
-      onMouseDown={isPreview || element.locked ? undefined : onMouseDown}
+      onPointerDown={isPreview || element.locked ? undefined : onPointerDown}
     >
       {element.type === 'image' ? (
         <img src={element.content} alt="design" className="w-full h-full object-contain" draggable={false} />
@@ -99,7 +99,7 @@ export default function DesignElementComponent({ element, isSelected, onMouseDow
               key={h}
               className="absolute w-2 h-2 bg-primary border border-primary-foreground rounded-sm z-10"
               style={{ ...HANDLE_POS[h], cursor: HANDLE_CURSORS[h] }}
-              onMouseDown={(e) => { e.stopPropagation(); onResize(element.id, h, e); }}
+              onPointerDown={(e) => { e.stopPropagation(); onResize(element.id, h, e); }}
             />
           ))}
         </>
