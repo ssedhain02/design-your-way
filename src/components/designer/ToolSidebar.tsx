@@ -19,7 +19,7 @@ export default function ToolSidebar() {
   const { activeTool, setActiveTool, selectElement } = useDesignerStore();
 
   return (
-    <div className="flex w-12 shrink-0 flex-col items-center gap-1 overflow-y-auto border border-border bg-background/95 py-1.5 shadow-lg backdrop-blur-md no-scrollbar max-md:rounded-xl md:w-[72px] md:rounded-none md:border-y-0 md:border-l-0 md:py-4 md:shadow-none">
+    <div className="pointer-events-auto flex h-full w-12 shrink-0 flex-col items-center gap-1 overflow-y-auto border border-border bg-background/95 py-1.5 shadow-lg backdrop-blur-md no-scrollbar max-md:rounded-xl md:w-[72px] md:rounded-none md:border-y-0 md:border-l-0 md:py-4 md:shadow-none">
       {tools.map((tool) => {
         const Icon = tool.icon;
         const isActive = activeTool === tool.id;

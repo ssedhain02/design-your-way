@@ -72,7 +72,7 @@ export default function ToolPanel() {
   const viewElements = elements.filter((el) => el.view === activeView);
 
   return (
-    <div className="flex w-[calc(100vw-4.5rem)] max-w-72 flex-col overflow-hidden border-r border-border bg-background shadow-xl md:w-72 md:shadow-none">
+    <div className="pointer-events-auto absolute bottom-14 left-12 flex h-[46%] w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-t-lg border border-border bg-background/95 shadow-xl backdrop-blur-md md:static md:h-auto md:w-72 md:rounded-none md:border-y-0 md:border-l-0 md:bg-background md:shadow-none md:backdrop-blur-none">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <h3 className="text-sm font-semibold text-foreground capitalize">
           {selectedElementId ? (selectedElement?.name || 'Element') : activeTool?.replace('-', ' ')}
