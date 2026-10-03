@@ -2,7 +2,8 @@ import { Suspense, useEffect, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Environment, Lightformer, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
-import { Maximize2, Minimize2, RotateCw, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
+import { Maximize2, Minimize2, RotateCw, RefreshCw, Sparkles, ZoomIn, ZoomOut } from 'lucide-react';
+import AiMockupDialog from './AiMockupDialog';
 import MockupScene, { GARMENT_STYLE_OPTIONS } from './MannequinPreview';
 import { useDesignerStore } from '@/store/designerStore';
 import { useDesignTextures } from '@/lib/designTexture';
@@ -34,6 +35,7 @@ export default function MockupPanel({ className }: { className?: string }) {
   const [viewRequest, setViewRequest] = useState<{ angle: number; token: number } | null>(null);
   const [distance, setDistance] = useState(4.8);
   const [fullscreen, setFullscreen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
 
   const requestView = (angle: number) => {
     setAutoRotate(false);
