@@ -14,6 +14,7 @@ interface VendorProduct {
   sizes: string[];
   description: string | null;
   base_price: number;
+  category?: string;
 }
 
 export default function ProductSelection() {
@@ -22,6 +23,7 @@ export default function ProductSelection() {
   const [selected, setSelected] = useState<VendorProduct | null>(null);
   const [chosenColor, setChosenColor] = useState<string | null>(null);
   const [chosenSize, setChosenSize] = useState<string | null>(null);
+  const [category, setCategory] = useState<'all' | 'tshirt' | 'hoodie'>('all');
   const navigate = useNavigate();
   const { setSelectedProduct, setGarmentColor, setSelectedSize } = useDesignerStore();
 

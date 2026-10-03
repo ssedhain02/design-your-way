@@ -27,7 +27,7 @@ export default function PrinterDashboard() {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [vendorProducts, setVendorProducts] = useState<VendorProduct[]>([]);
-  const [productForm, setProductForm] = useState({ name: '', description: '', base_price: '15.00', colors: '#ffffff,#000000', sizes: 'S,M,L,XL,XXL' });
+  const [productForm, setProductForm] = useState({ name: '', description: '', base_price: '15.00', colors: '#ffffff,#000000', sizes: 'S,M,L,XL,XXL', category: 'tshirt' });
   const [savingProduct, setSavingProduct] = useState(false);
   const [productImage, setProductImage] = useState<File | null>(null);
   const [productImagePreview, setProductImagePreview] = useState<string | null>(null);
@@ -110,10 +110,11 @@ export default function PrinterDashboard() {
         colors: productForm.colors.split(',').map(c => c.trim()).filter(Boolean),
         sizes: productForm.sizes.split(',').map(s => s.trim()).filter(Boolean),
         image_url: imageUrl,
+        category: productForm.category,
       } as any);
       if (error) throw error;
       toast({ title: 'Product listed!' });
-      setProductForm({ name: '', description: '', base_price: '15.00', colors: '#ffffff,#000000', sizes: 'S,M,L,XL,XXL' });
+      setProductForm({ name: '', description: '', base_price: '15.00', colors: '#ffffff,#000000', sizes: 'S,M,L,XL,XXL', category: 'tshirt' });
       setProductImage(null);
       setProductImagePreview(null);
       fetchVendorProducts();
@@ -238,6 +239,13 @@ export default function PrinterDashboard() {
                 <div>
                   <Label>Product Name *</Label>
                   <Input value={productForm.name} onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))} placeholder="Classic T-Shirt" />
+                </div>
+                <div>
+                  <Label>Garment Type</Label>
+                  <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={productForm.category} onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))}>
+                    <option value="tshirt">T-Shirt</option>
+                    <option value="hoodie">Hoodie</option>
+                  </select>
                 </div>
                 <div>
                   <Label>Base Price ($)</Label>
