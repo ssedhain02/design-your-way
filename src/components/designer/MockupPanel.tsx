@@ -117,6 +117,9 @@ export default function MockupPanel({ className }: { className?: string }) {
           <Button variant="ghost" size="icon" onClick={reset} className="h-7 w-7 text-muted-foreground" title="Reset view" aria-label="Reset view">
             <RefreshCw className="w-4 h-4" />
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setAiOpen(true)} className="h-7 px-2 text-xs" title="AI realistic mockup">
+            <Sparkles className="w-3.5 h-3.5 mr-1" /> AI mockup
+          </Button>
           <Button
             variant="ghost"
             size="icon"
