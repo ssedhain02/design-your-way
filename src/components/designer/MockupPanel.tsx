@@ -176,6 +176,7 @@ export default function MockupPanel({ className }: { className?: string }) {
           </Suspense>
         </Canvas>
       </div>
+      <AiMockupDialog open={aiOpen} onOpenChange={setAiOpen} />
     </div>
   );
 }
