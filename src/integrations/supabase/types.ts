@@ -238,6 +238,7 @@ export type Database = {
       vendor_products: {
         Row: {
           base_price: number
+          category: string
           colors: Json
           created_at: string
           description: string | null
@@ -251,6 +252,7 @@ export type Database = {
         }
         Insert: {
           base_price?: number
+          category?: string
           colors?: Json
           created_at?: string
           description?: string | null
@@ -264,6 +266,7 @@ export type Database = {
         }
         Update: {
           base_price?: number
+          category?: string
           colors?: Json
           created_at?: string
           description?: string | null
